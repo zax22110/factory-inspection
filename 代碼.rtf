@@ -1,0 +1,456 @@
+{\rtf1\ansi\ansicpg950\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="zh-TW">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>\uc0\u26007 \u20845 \u24288  2026 \u29872 \u22659 \u24033 \u27298 \u31995 \u32113 </title>\
+    <!-- Tailwind CSS -->\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <!-- Lucide Icons -->\
+    <script src="https://unpkg.com/lucide@latest"></script>\
+    <!-- Google Fonts -->\
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">\
+    <style>\
+        body \{ font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; \}\
+        .animate-in \{ animation: fadeIn 0.3s ease-out; \}\
+        @keyframes fadeIn \{ from \{ opacity: 0; transform: translateY(10px); \} to \{ opacity: 1; transform: translateY(0); \} \}\
+        .no-scrollbar::-webkit-scrollbar \{ display: none; \}\
+        .no-scrollbar \{ -ms-overflow-style: none; scrollbar-width: none; \}\
+        \
+        /* \uc0\u37341 \u23565 \u25163 \u27231 \u20633 \u35387 \u36664 \u20837 \u30340 \u32005 \u33394 \u21152 \u31895 \u27171 \u24335  */\
+        .remark-input \{\
+            color: #dc2626; /* red-600 */\
+            font-weight: 700;\
+            text-align: center;\
+        \}\
+    </style>\
+</head>\
+<body class="bg-blue-50 text-slate-800 pb-28">\
+\
+    <div id="root" class="max-w-2xl mx-auto px-4 py-8">\
+        <!-- JS \uc0\u21205 \u24907 \u28210 \u26579 \u20839 \u23481  -->\
+    </div>\
+\
+    <!-- Firebase SDKs -->\
+    <script type="module">\
+        import \{ initializeApp \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";\
+        import \{ getAuth, signInAnonymously, onAuthStateChanged \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";\
+        import \{ getFirestore, doc, setDoc, onSnapshot, collection \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";\
+\
+        // ==========================================\
+        // 1. Firebase \uc0\u37329 \u38000 \u37197 \u32622  (\u24050 \u22635 \u20837 \u24744 \u30340 \u37329 \u38000 )\
+        // ==========================================\
+        const firebaseConfig = \{\
+            apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c",\
+            authDomain: "douliu-factory-2026.firebaseapp.com",\
+            projectId: "douliu-factory-2026",\
+            storageBucket: "douliu-factory-2026.appspot.com",\
+            messagingSenderId: "782947103842", \
+            appId: "1:782947103842:web:9f8e7d6c5b4a3f21"\
+        \};\
+\
+        const app = initializeApp(firebaseConfig);\
+        const auth = getAuth(app);\
+        const db = getFirestore(app);\
+        const appId = "douliu-factory-2026";\
+\
+        // --- \uc0\u20840 \u22495 \u29376 \u24907  ---\
+        window.state = \{\
+            view: 'home',\
+            selectedDate: new Date(2026, 0, 4),\
+            user: null,\
+            inspectionData: \{\},\
+            inspectors: \{\},\
+            lastSaveTimes: \{\},\
+            locations: [],\
+            activeGuide: null,\
+            showAddSelect: false,\
+            isExporting: false,\
+            saveStatus: false,\
+            exportRange: \{ start: "2026-01-01", end: "2026-01-31" \}\
+        \};\
+\
+        const guideItems = [\
+            "01\uc0\u39208 \u22806 \u36913 \u37002 ", "02\u27331 \u21488 \u25509 \u24453 ", "03\u29151 \u36939 \u36774 \u20844 \u23460 ", "04\u21830 \u21697 \u21312 ", "05\u26371 \u21729 \u20241 \u24687 \u21312 ", "06\u26371 \u21209 \u37096 ", "07\u25945 \u32244 \u37096 ", "08\u24515 \u32954 \u35347 \u32244 \u21312 ",\
+            "09\uc0\u37325 \u35347 \u22120 \u26800 \u35347 \u32244 \u21312 ", "10\u31169 \u20154 \u25945 \u32244 \u35347 \u32244 \u21312 ", "11\u30007 \u26356 \u34915 \u23460 (\u21547 \u24257 \u25152 )", "12\u22899 \u26356 \u34915 \u23460 (\u21547 \u24257 \u25152 )", "13\u30007 \u26356 \u28107 \u28020 \u38291 ", "14\u22899 \u26356 \u28107 \u28020 \u38291 ", "15\u23433 \u20840 \u35373 \u20633 ", "16\u20840 \u39208 \u20844 \u20849 \u31354 \u38291 ",\
+            "17\uc0\u21729 \u24037 \u20241 \u24687 \u23460 ", "18\u24037 \u21209 \u23460 ", "19\u24037 \u21209 \u20489 \u24235 \u27231 \u25151 ", "20\u21729 \u24037 ", "21*\u26234 \u33021 \u36009 \u21806 \u21312 ", "22*\u23560 \u26989 \u25331 \u25802 \u35347 \u32244 \u21312 ", "23*\u22899 \u24615 \u35347 \u32244 \u21312 ", "24*PU\u36305 \u36947 ",\
+            "25*\uc0\u36947 \u39208 ", "26*\u25856 \u23721 \u21312 ", "27*\u39131 \u36650 \u25945 \u23460 ", "28*\u26377 \u27687 \u25945 \u23460 ", "29*\u22721 \u29699 \u23460 ", "30*\u26700 \u29699 \u23460 ", "31*\u31811 \u29699 \u22580 ", "32*\u25758 \u29699 \u23460 ",\
+            "33*\uc0\u38651 \u21205 \u36938 \u25138 \u21312 ", "34*\u20818 \u31461 \u39208 ", "35*\u28216 \u27891 \u27744 ", "36*\u30007 \u19977 \u28331 \u26262 ", "37*\u22899 \u19977 \u28331 \u26262 ", "38*\u30007 \u33976 \u27683 \u28900 \u31665 ", "39*\u22899 \u33976 \u27683 \u28900 \u31665 ", "40*\u30007 \u20844 \u20849 \u24257 \u25152 ",\
+            "41*\uc0\u22899 \u20844 \u20849 \u24257 \u25152 ", "42*\u27544 \u38556 \u20844 \u20849 \u24257 \u25152 ", "43*\u20844 \u20849 \u32622 \u29289 \u27331 ", "44*\u20154 \u39636 \u24037 \u25151 "\
+        ];\
+\
+        // \uc0\u38928 \u35373 \u24033 \u27298 \u21312 \u22495 \
+        state.locations = guideItems.slice(0, 22);\
+\
+        // --- \uc0\u24037 \u20855 \u20989 \u24335  ---\
+        const getDateKey = (date) => `$\{date.getFullYear()\}-$\{String(date.getMonth() + 1).padStart(2, '0')\}-$\{String(date.getDate()).padStart(2, '0')\}`;\
+        const cleanAreaName = (name) => name.replace(/^[0-9]+[*]?/, "");\
+\
+        window.calculateRate = (dateKey) => \{\
+            const dayData = state.inspectionData[dateKey];\
+            if (!dayData || state.locations.length === 0) return 0;\
+            const checkedCount = state.locations.filter(loc => dayData[loc]?.checked).length;\
+            return Math.round((checkedCount / state.locations.length) * 100);\
+        \};\
+\
+        // --- \uc0\u26680 \u24515 \u28210 \u26579 \u20989 \u25976  ---\
+        window.render = () => \{\
+            const root = document.getElementById('root');\
+            const \{ view, selectedDate, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus \} = state;\
+            const currentKey = getDateKey(selectedDate);\
+            const todayKey = getDateKey(new Date(2026, 0, 4));\
+\
+            let html = `\
+                <header class="flex justify-between items-center mb-6">\
+                    <h1 class="text-2xl font-black text-blue-900 tracking-tighter">\uc0\u26007 \u20845 \u24288 \u29872 \u22659 \u24033 \u27298 </h1>\
+                    <div class="bg-blue-500 px-3 py-1.5 rounded-xl text-[10px] font-black text-white shadow-lg uppercase">2026 Admin</div>\
+                </header>\
+            `;\
+\
+            if (view === 'home') \{\
+                const rate = calculateRate(todayKey);\
+                html += `\
+                    <div class="space-y-4 animate-in">\
+                        <section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900">\
+                            <div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"><i data-lucide="wind" class="w-24 h-24"></i></div>\
+                            <div class="z-10 text-left">\
+                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest">Today's Inspection</p>\
+                                <p class="text-2xl font-black text-blue-900">$\{todayKey\}</p>\
+                                <button onclick="setView('details', new Date(2026,0,4))" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">\uc0\u22519 \u34892 \u24033 \u27298 </button>\
+                            </div>\
+                            <div class="relative w-20 h-20 z-10 flex items-center justify-center">\
+                                <svg class="w-20 h-20 transform -rotate-90">\
+                                    <circle cx="40" cy="40" r="34" stroke="currentColor" stroke-width="6" fill="transparent" class="text-slate-50" />\
+                                    <circle cx="40" cy="40" r="34" stroke="currentColor" stroke-width="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="$\{213.63 - (213.63 * rate) / 100\}" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" />\
+                                </svg>\
+                                <span class="absolute text-lg font-black text-blue-900">$\{rate\}%</span>\
+                            </div>\
+                        </section>\
+\
+                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50">\
+                            <div class="flex items-center gap-2 mb-3">\
+                                <i data-lucide="info" class="text-blue-600 w-4 h-4"></i>\
+                                <h3 class="font-black text-blue-900 text-sm">\uc0\u21312 \u22495 \u25351 \u21335 </h3>\
+                            </div>\
+                            <div class="grid grid-cols-3 gap-1.5">\
+                                $\{guideItems.map(item => `\
+                                    <button onclick="showGuide('$\{item\}')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95">\
+                                        <span class="text-[11px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">$\{item\}</span>\
+                                    </button>\
+                                `).join('')\}\
+                            </div>\
+                        </section>\
+                    </div>\
+                `;\
+            \} else if (view === 'calendar') \{\
+                html += `\
+                    <div class="flex flex-col items-center animate-in">\
+                        <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6">\
+                            <div class="flex justify-between items-center mb-6">\
+                                <button class="p-2 hover:bg-blue-50 rounded-full text-blue-600"><i data-lucide="chevron-left"></i></button>\
+                                <h3 class="text-xl font-black text-blue-900 tracking-tight">2026\uc0\u24180  1\u26376 </h3>\
+                                <button class="p-2 hover:bg-blue-50 rounded-full text-blue-600"><i data-lucide="chevron-right"></i></button>\
+                            </div>\
+                            <div class="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-black text-slate-300 uppercase">\
+                                <div>\uc0\u26085 </div><div>\u19968 </div><div>\u20108 </div><div>\u19977 </div><div>\u22235 </div><div>\u20116 </div><div>\u20845 </div>\
+                            </div>\
+                            <div class="grid grid-cols-7 gap-2 text-center">\
+                                $\{Array.from(\{length: 31\}, (_, i) => \{\
+                                    const dKey = `2026-01-$\{String(i+1).padStart(2, '0')\}`;\
+                                    const rate = calculateRate(dKey);\
+                                    return `\
+                                        <button onclick="setView('details', new Date(2026, 0, $\{i+1\}))" class="h-12 rounded-xl border border-blue-50 flex flex-col items-center justify-center relative hover:bg-blue-50 transition-colors">\
+                                            <span class="text-xs font-bold">$\{i+1\}</span>\
+                                            $\{rate > 0 ? `<div class="w-1.5 h-1.5 rounded-full mt-1 $\{rate === 100 ? 'bg-green-400' : 'bg-orange-400'\}"></div>` : ''\}\
+                                        </button>\
+                                    `;\
+                                \}).join('')\}\
+                            </div>\
+                        </div>\
+                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-2xl font-black shadow-lg flex items-center gap-2 transition-all active:scale-95">\
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i> \uc0\u21295 \u20986 \u24033 \u27298  Excel \u22577 \u34920 \
+                        </button>\
+                    </div>\
+                `;\
+            \} else if (view === 'details') \{\
+                const rate = calculateRate(currentKey);\
+                const saveTime = lastSaveTimes[currentKey] || "";\
+                html += `\
+                    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100">\
+                        $\{saveStatus ? '<div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex items-center justify-center font-bold text-blue-600">\uc0\u23384 \u27284 \u20013 ...</div>' : ''\}\
+                        \
+                        <div class="bg-blue-600 p-5 text-white">\
+                            <div class="flex justify-between items-center mb-5 gap-4">\
+                                <!-- \uc0\u19978 \u24038 : \u26085 \u26399  -->\
+                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner">\
+                                    <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>\
+                                    <span class="text-sm font-bold truncate">$\{currentKey\}</span>\
+                                </div>\
+                                <!-- \uc0\u19978 \u21491 : \u24033 \u27298 \u20154 \u21729  -->\
+                                <div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white">\
+                                    <i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"></i>\
+                                    <input type="text" placeholder="\uc0\u22995 \u21517 " value="$\{inspectors[currentKey] || ""\}" onchange="updateInspector('$\{currentKey\}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">\
+                                </div>\
+                            </div>\
+                            <div class="flex justify-between items-end">\
+                                <!-- \uc0\u19979 \u24038 : \u36914 \u24230  -->\
+                                <div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg">\uc0\u23436 \u25104 \u29575 : $\{rate\}%</div>\
+                                <!-- \uc0\u19979 \u21491 : \u23384 \u27284 \u26178 \u38291  -->\
+                                <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">\
+                                    <i data-lucide="clock" class="w-2.5 h-2.5"></i> $\{saveTime ? saveTime : '\uc0\u23578 \u26410 \u23384 \u27284 '\}\
+                                </div>\
+                            </div>\
+                        </div>\
+\
+                        <div class="overflow-x-auto no-scrollbar">\
+                            <table class="w-full table-fixed border-collapse">\
+                                <thead class="bg-blue-50 text-blue-900 uppercase font-black tracking-tighter border-b border-blue-100">\
+                                    <tr>\
+                                        <th class="px-1 py-4 text-center w-12 text-[13px]">\uc0\u29376 \u24907 </th>\
+                                        <th class="px-2 py-4 w-[25%] text-center border-r border-blue-100 text-[13px]">\uc0\u21312 \u22495 </th>\
+                                        <th class="px-3 py-4 text-[13px] text-center">\uc0\u20633 \u35387 </th>\
+                                        <th class="w-8"></th>\
+                                    </tr>\
+                                </thead>\
+                                <tbody class="divide-y divide-blue-50">\
+                                    $\{locations.map(loc => \{\
+                                        const data = inspectionData[currentKey]?.[loc] || \{ checked: false, remark: "" \};\
+                                        return `\
+                                            <tr class="hover:bg-blue-50/30">\
+                                                <td class="py-5 text-center">\
+                                                    <button onclick="toggleCheck('$\{loc\}')" class="$\{data.checked ? 'text-green-500' : 'text-slate-200'\} transition-all active:scale-75">\
+                                                        $\{data.checked ? '<i data-lucide="check-circle" class="w-[30px] h-[30px] mx-auto"></i>' : '<i data-lucide="circle" class="w-[30px] h-[30px] mx-auto"></i>'\}\
+                                                    </button>\
+                                                </td>\
+                                                <td class="border-r border-blue-50 text-center">\
+                                                    <button onclick="showGuide('$\{loc\}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[12.5px] leading-tight justify-center w-full">\
+                                                        $\{cleanAreaName(loc)\} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200 shrink-0"></i>\
+                                                    </button>\
+                                                </td>\
+                                                <td class="px-2">\
+                                                    <!-- \uc0\u25163 \u27231 \u27969 \u26274 \u20778 \u21270 : \u21482 \u26377 \u22312 \u22833 \u21435 \u28966 \u40670 \u26178 \u25165 \u26356 \u26032 \u32317 \u29376 \u24907  -->\
+                                                    <input type="text" value="$\{data.remark || ""\}" onblur="updateRemark('$\{loc\}', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]">\
+                                                </td>\
+                                                <td class="text-center">\
+                                                    <button onclick="removeLocation('$\{loc\}')" class="text-slate-100 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>\
+                                                </td>\
+                                            </tr>\
+                                        `;\
+                                    \}).join('')\}\
+                                </tbody>\
+                            </table>\
+                        </div>\
+\
+                        <div class="p-4 space-y-4">\
+                            $\{!showAddSelect ? `\
+                                <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold">+ \uc0\u26032 \u22686 \u21312 \u22495 </button>\
+                            ` : `\
+                                <div class="flex gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 animate-in">\
+                                    <select id="newLocSelect" class="flex-1 bg-white border border-blue-100 rounded-lg px-2 text-[12px] font-bold outline-none">\
+                                        $\{guideItems.map(item => `<option value="$\{item\}">$\{item\}</option>`).join('')\}\
+                                    </select>\
+                                    <button onclick="addLocation()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">\uc0\u21152 \u20837 </button>\
+                                    <button onclick="toggleAdd(false)" class="p-2 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>\
+                                </div>\
+                            `\}\
+                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest">\
+                                <i data-lucide="save" class="w-5 h-5"></i> \uc0\u23384 \u27284 \
+                            </button>\
+                        </div>\
+                    </div>\
+                `;\
+            \}\
+\
+            // \uc0\u24213 \u37096 \u23566 \u35261 \u21015 \
+            html += `\
+                <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[80%] max-w-xs bg-white/95 backdrop-blur-xl border border-white rounded-[2.5rem] shadow-2xl p-2 flex justify-around items-center z-50">\
+                    <button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-1 p-3 rounded-[2rem] transition-all $\{view === 'home' ? 'bg-blue-600 text-white shadow-xl scale-105' : 'text-slate-400'\}">\
+                        <i data-lucide="home" class="w-5 h-5"></i><span class="text-[11px] font-black">\uc0\u39318 \u38913 </span>\
+                    </button>\
+                    <button onclick="setView('calendar')" class="flex-1 flex flex-col items-center gap-1 p-3 rounded-[2rem] transition-all $\{view === 'calendar' ? 'bg-blue-600 text-white shadow-xl scale-105' : 'text-slate-400'\}">\
+                        <i data-lucide="layout-grid" class="w-5 h-5"></i><span class="text-[11px] font-black">\uc0\u26085 \u26310 </span>\
+                    </button>\
+                </nav>\
+            `;\
+\
+            // \uc0\u24392 \u31383 \u33287 \u21295 \u20986 \u35373 \u23450 ... (\u30053 \u65292 \u21516 \u21069 \u20294 \u30906 \u20445 \u21151 \u33021 \u25972 \u21512 )\
+            if (activeGuide) \{\
+                html += `\
+                    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm animate-in">\
+                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-blue-100">\
+                            <div class="bg-blue-600 p-6 text-white relative">\
+                                <button onclick="showGuide(null)" class="absolute top-4 right-4 p-1 hover:bg-white/20 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>\
+                                <h3 class="text-xl font-black text-center">$\{activeGuide\}</h3>\
+                            </div>\
+                            <div class="p-6 space-y-6 text-sm">\
+                                <div><h4 class="font-bold text-blue-900 mb-1">\uc0\u24033 \u22580 \u35201 \u27714 </h4><p class="text-slate-600 leading-relaxed text-[13px]">\u35531 \u21443 \u29031 \u27161 \u28310 \u28165 \u28500 \u31243 \u24207 \u36914 \u34892 \u29872 \u22659 \u32173 \u35703 \u12290 </p></div>\
+                                <div><h4 class="font-bold text-blue-900 mb-1">\uc0\u24314 \u35696 \u26597 \u26680 \u26041 \u21521 </h4><p class="text-slate-600 leading-relaxed text-[13px]">\u35264 \u23519 \u22320 \u26495 \u12289 \u35373 \u20633 \u21450 \u30064 \u21619 \u29376 \u24907 \u12290 </p></div>\
+                            </div>\
+                            <button onclick="showGuide(null)" class="w-full bg-blue-600 text-white py-4 font-bold">\uc0\u30906 \u35469 </button>\
+                        </div>\
+                    </div>\
+                `;\
+            \}\
+\
+            if (isExporting) \{\
+                html += `\
+                    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm animate-in">\
+                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">\
+                            <div class="flex justify-between items-center"><h3 class="font-black text-blue-900">\uc0\u21295 \u20986 \u22577 \u34920 \u31684 \u22285 </h3><button onclick="toggleExport(false)"><i data-lucide="x" class="w-5 h-5"></i></button></div>\
+                            <div class="space-y-4 text-left">\
+                                <div><label class="text-xs font-bold text-slate-400 block mb-1">\uc0\u38283 \u22987 \u26085 \u26399 </label><input type="date" value="$\{exportRange.start\}" onchange="updateExportRange('start', this.value)" class="w-full border rounded-xl p-3 outline-none"></div>\
+                                <div><label class="text-xs font-bold text-slate-400 block mb-1">\uc0\u32080 \u26463 \u26085 \u26399 </label><input type="date" value="$\{exportRange.end\}" onchange="updateExportRange('end', this.value)" class="w-full border rounded-xl p-3 outline-none"></div>\
+                                <button onclick="handleExport()" class="w-full bg-green-500 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95">\uc0\u31435 \u21363 \u19979 \u36617  CSV \u22577 \u34920 </button>\
+                            </div>\
+                        </div>\
+                    </div>\
+                `;\
+            \}\
+\
+            root.innerHTML = html;\
+            lucide.createIcons();\
+        \};\
+\
+        // --- \uc0\u20114 \u21205 \u37007 \u36655 \u32129 \u23450  ---\
+        window.setView = (view, date) => \{\
+            state.view = view;\
+            if (date) state.selectedDate = date;\
+            render();\
+        \};\
+\
+        window.toggleCheck = (loc) => \{\
+            const key = getDateKey(state.selectedDate);\
+            if (!state.inspectionData[key]) state.inspectionData[key] = \{\};\
+            if (!state.inspectionData[key][loc]) state.inspectionData[key][loc] = \{ checked: false, remark: "" \};\
+            state.inspectionData[key][loc].checked = !state.inspectionData[key][loc].checked;\
+            render();\
+        \};\
+\
+        window.updateRemark = (loc, val) => \{\
+            const key = getDateKey(state.selectedDate);\
+            if (!state.inspectionData[key]) state.inspectionData[key] = \{\};\
+            if (!state.inspectionData[key][loc]) state.inspectionData[key][loc] = \{ checked: false, remark: "" \};\
+            state.inspectionData[key][loc].remark = val;\
+            // \uc0\u30001 \u26044 \u26159  onblur \u35320 \u30332 \u65292 \u27492 \u34389 \u25163 \u21205 \u26356 \u26032 \u20294 \u19981 \u37325 \u26032 \u28210 \u26579 \u25972 \u20491 \u38913 \u38754 \u20197 \u38450 \u36339 \u21205 \u65292 \u38500 \u38750 \u24517 \u35201 \
+        \};\
+\
+        window.updateInspector = (key, name) => \{\
+            state.inspectors[key] = name;\
+        \};\
+\
+        window.showGuide = (item) => \{\
+            state.activeGuide = item;\
+            render();\
+        \};\
+\
+        window.toggleAdd = (show) => \{\
+            state.showAddSelect = show;\
+            render();\
+        \};\
+\
+        window.addLocation = () => \{\
+            const select = document.getElementById('newLocSelect');\
+            const val = select.value;\
+            if (!state.locations.includes(val)) \{\
+                state.locations.push(val);\
+            \}\
+            state.showAddSelect = false;\
+            render();\
+        \};\
+\
+        window.removeLocation = (loc) => \{\
+            state.locations = state.locations.filter(l => l !== loc);\
+            render();\
+        \};\
+\
+        window.saveData = async () => \{\
+            state.saveStatus = true;\
+            render();\
+            const now = new Date();\
+            const timeStr = `$\{now.getFullYear()\}/$\{now.getMonth() + 1\}/$\{now.getDate()\} $\{String(now.getHours()).padStart(2, '0')\}:$\{String(now.getMinutes()).padStart(2, '0')\}`;\
+            const key = getDateKey(state.selectedDate);\
+\
+            if (state.user) \{\
+                try \{\
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);\
+                    await setDoc(docRef, \{\
+                        records: state.inspectionData[key] || \{\},\
+                        inspector: state.inspectors[key] || "",\
+                        saveTime: timeStr\
+                    \}, \{ merge: true \});\
+                \} catch (e) \{ console.error("Firebase Save Error:", e); \}\
+            \}\
+            state.lastSaveTimes[key] = timeStr;\
+\
+            setTimeout(() => \{\
+                state.saveStatus = false;\
+                window.setView('home');\
+            \}, 1000);\
+        \};\
+\
+        window.toggleExport = (show) => \{\
+            state.isExporting = show;\
+            render();\
+        \};\
+\
+        window.updateExportRange = (type, val) => \{ state.exportRange[type] = val; \};\
+\
+        window.handleExport = () => \{\
+            let csv = "\uc0\u26085 \u26399 ,\u20154 \u21729 ,\u21312 \u22495 ,\u29376 \u24907 ,\u20633 \u35387 \\n";\
+            const start = new Date(state.exportRange.start);\
+            const end = new Date(state.exportRange.end);\
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) \{\
+                const k = getDateKey(d);\
+                const data = state.inspectionData[k];\
+                if (data) \{\
+                    Object.keys(data).forEach(loc => \{\
+                        csv += `$\{k\},$\{state.inspectors[k] || ""\},$\{loc\},$\{data[loc].checked ? "V" : ""\},$\{data[loc].remark || ""\}\\n`;\
+                    \});\
+                \}\
+            \}\
+            const blob = new Blob(["\\ufeff" + csv], \{ type: 'text/csv;charset=utf-8;' \});\
+            const link = document.createElement("a");\
+            link.href = URL.createObjectURL(blob);\
+            link.download = `\uc0\u24033 \u27298 \u22577 \u34920 _$\{state.exportRange.start\}_$\{state.exportRange.end\}.csv`;\
+            link.click();\
+            window.toggleExport(false);\
+        \};\
+\
+        // --- Firebase Auth & Data Sync ---\
+        const initApp = async () => \{\
+            try \{\
+                const cred = await signInAnonymously(auth);\
+                onAuthStateChanged(auth, (user) => \{\
+                    state.user = user;\
+                    if (user) \{\
+                        const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');\
+                        onSnapshot(dataRef, (snapshot) => \{\
+                            snapshot.forEach(doc => \{\
+                                const d = doc.data();\
+                                state.inspectionData[doc.id] = d.records || \{\};\
+                                state.inspectors[doc.id] = d.inspector || "";\
+                                state.lastSaveTimes[doc.id] = d.saveTime || "";\
+                            \});\
+                            render();\
+                        \});\
+                    \}\
+                \});\
+            \} catch (e) \{\
+                console.warn("Firebase Auth Fail (\uc0\u21487 \u33021 \u26410 \u38283 \u21855 \u21311 \u21517 \u30331 \u20837 ):", e);\
+                render(); // \uc0\u22833 \u25943 \u20173 \u28210 \u26579 \u65292 \u25913 \u28858 \u26412 \u22320 \u25805 \u20316 \u27169 \u24335 \
+            \}\
+        \};\
+\
+        initApp();\
+        render();\
+\
+    </script>\
+</body>\
+</html>}
