@@ -42,10 +42,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
         // ==========================================
-        // 1. Firebase 金鑰配置 (已啟動雲端連動)
+        // 1. Firebase 金鑰配置 (雲端連動已開啟)
         // ==========================================
         const firebaseConfig = { 
             apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c", 
@@ -70,7 +70,7 @@
             inspectionData: {},
             inspectors: {},
             lastSaveTimes: {},
-            locations: [], 
+            locations: [], // 雲端載入後會更新
             activeGuide: null,
             showAddSelect: false,
             isExporting: false,
@@ -87,12 +87,11 @@
             "41*女公共廁所", "42*殘障公共廁所", "43*公共置物櫃", "44*人體工房"
         ];
 
-        // 預設僅顯示前 20 項
+        // 預設初始化 (若雲端沒資料則用這個)
         state.locations = guideItems.slice(0, 20);
 
         // --- 工具函式 ---
         const getDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        const cleanAreaName = (name) => name.replace(/^[0-9]+[*]?/, "");
         const splitArea = (name) => {
             const match = name.match(/^([0-9]+[*]?)(.*)$/);
             return match ? { id: match[1], name: match[2] } : { id: "", name: name };
@@ -135,8 +134,8 @@
                     <div class="space-y-4 animate-in text-left">
                         <section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900">
                             <div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"><i data-lucide="wind" class="w-24 h-24"></i></div>
-                            <div class="z-10">
-                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest text-left">Today's Goal</p>
+                            <div class="z-10 text-left">
+                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest">Today's Goal</p>
                                 <p class="text-2xl font-black text-blue-900">${todayKey}</p>
                                 <button onclick="setView('details', new Date(2026,0,4))" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">執行巡檢</button>
                             </div>
@@ -170,10 +169,10 @@
                 html += `
                     <div class="flex flex-col items-center animate-in">
                         <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6 text-blue-900">
-                            <div class="flex justify-between items-center mb-6 px-1">
-                                <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"><i data-lucide="chevron-left"></i></button>
+                            <div class="flex justify-between items-center mb-6">
+                                <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90 transition-all"><i data-lucide="chevron-left"></i></button>
                                 <h3 class="text-xl font-black text-blue-900 tracking-tight">2026年 ${months[currentMonth]}</h3>
-                                <button onclick="changeMonth(1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"><i data-lucide="chevron-right"></i></button>
+                                <button onclick="changeMonth(1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90 transition-all"><i data-lucide="chevron-right"></i></button>
                             </div>
                             <div class="grid grid-cols-7 gap-1 mb-3 text-center text-[10px] font-black text-slate-300 uppercase">
                                 <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
@@ -189,7 +188,7 @@
                                         <button onclick="setView('details', new Date(2026, ${currentMonth}, ${day}))" 
                                                 class="calendar-day-btn rounded-xl border border-blue-50 hover:bg-blue-50 transition-all active:scale-90 shadow-sm ${weekendClass}">
                                             <span class="text-xs font-black ${isWeekend ? 'text-blue-700' : 'text-slate-600'}">${day}</span>
-                                            ${rate > 0 ? `<div class="w-1.5 h-1.5 rounded-full mt-1 ${rate === 100 ? 'bg-green-500' : 'bg-orange-500'}"></div>` : ''}
+                                            ${rate > 0 ? `<div class="w-1.5 h-1.5 rounded-full mt-1 ${rate === 100 ? 'bg-green-400' : 'bg-orange-400'}"></div>` : ''}
                                         </button>
                                     `;
                                 }).join('')}
@@ -205,30 +204,27 @@
                 const saveTime = lastSaveTimes[currentKey] || "";
                 html += `
                     <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left">
-                        ${saveStatus ? '<div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex items-center justify-center font-bold text-blue-600">雲端存檔中...</div>' : ''}
+                        ${saveStatus ? '<div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex items-center justify-center font-bold text-blue-600">同步雲端中...</div>' : ''}
                         
                         <div class="bg-blue-600 p-5 text-white">
                             <div class="flex justify-between items-center mb-5 gap-4">
-                                <!-- 上左: 日期 -->
                                 <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner">
                                     <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <span class="text-sm font-bold truncate">${currentKey}</span>
                                 </div>
-                                <!-- 上右: 巡檢人員 -->
                                 <div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white">
                                     <i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <input type="text" placeholder="姓名" value="${inspectors[currentKey] || ""}" onchange="updateInspector('${currentKey}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">
                                 </div>
                             </div>
                             <div class="flex justify-between items-end">
-                                <!-- 下左: 進度 + 快捷儲存按鈕 -->
                                 <div class="flex items-center gap-2">
                                     <div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg">進度: ${rate}%</div>
+                                    <!-- 快捷儲存按鈕 -->
                                     <button onclick="saveData()" class="bg-blue-500 hover:bg-blue-400 text-white p-1.5 rounded-xl shadow-md active:scale-95 transition-all">
                                         <i data-lucide="save" class="w-3.5 h-3.5"></i>
                                     </button>
                                 </div>
-                                <!-- 下右: 存檔時間 -->
                                 <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">
                                     <i data-lucide="clock" class="w-2.5 h-2.5"></i> ${saveTime ? saveTime : '尚未存檔'}
                                 </div>
@@ -250,15 +246,15 @@
                                         const data = inspectionData[currentKey]?.[loc] || { checked: false, remark: "" };
                                         const area = splitArea(loc);
                                         return `
-                                            <tr class="hover:bg-blue-50/30">
+                                            <tr class="hover:bg-blue-50/30 transition-colors">
                                                 <td class="py-5 text-center">
-                                                    <button onclick="toggleCheck('${loc}')" class="${data.checked ? 'text-green-500' : 'text-slate-200'} transition-all active:scale-75">
+                                                    <button onclick="toggleCheck('${loc}')" class="${data.checked ? 'text-green-500' : 'text-slate-200'} active:scale-75">
                                                         ${data.checked ? '<i data-lucide="check-circle" class="w-[30px] h-[30px] mx-auto"></i>' : '<i data-lucide="circle" class="w-[30px] h-[30px] mx-auto"></i>'}
                                                     </button>
                                                 </td>
                                                 <td class="border-r border-blue-50 text-center px-1">
                                                     <button onclick="showGuide('${loc}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[12px] leading-tight justify-center w-full">
-                                                        ${area.name} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200 shrink-0"></i>
+                                                        ${area.name} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200"></i>
                                                     </button>
                                                 </td>
                                                 <td class="px-2">
@@ -286,7 +282,7 @@
                                     <button onclick="toggleAdd(false)" class="p-2 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
                                 </div>
                             `}
-                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest">
+                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg tracking-widest uppercase">
                                 <i data-lucide="save" class="w-5 h-5"></i> 存檔
                             </button>
                         </div>
@@ -294,7 +290,7 @@
                 `;
             }
 
-            // --- 底部導覽列 (精簡版) ---
+            // 導覽列
             html += `
                 <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50">
                     <button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all ${view === 'home' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}">
@@ -316,43 +312,31 @@
             const wb = XLSX.utils.book_new();
             const start = new Date(state.exportRange.start);
             const end = new Date(state.exportRange.end);
-            
             const monthsMap = {};
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                 const monthName = `${d.getFullYear()}年${d.getMonth() + 1}月`;
                 if (!monthsMap[monthName]) monthsMap[monthName] = [];
                 monthsMap[monthName].push(new Date(d));
             }
-
             Object.entries(monthsMap).forEach(([sheetName, days]) => {
-                const aoa = [];
-                const row1 = ["斗六廠巡檢表", ""];
-                days.forEach(day => {
-                    const k = getDateKey(day);
-                    row1.push(`${day.getDate()}號`, state.inspectors[k] || "");
-                });
-                aoa.push(row1);
+                const aoa = [["斗六廠巡檢表", ""]];
+                days.forEach(day => aoa[0].push(`${day.getDate()}號`, state.inspectors[getDateKey(day)] || ""));
                 aoa.push([]);
-
                 const row3 = ["區域編號", "區域名稱"];
                 days.forEach(() => row3.push("狀態", "備註"));
                 aoa.push(row3);
-
                 state.locations.forEach(loc => {
                     const area = splitArea(loc);
                     const rowData = [area.id, area.name];
                     days.forEach(day => {
                         const k = getDateKey(day);
-                        const record = state.inspectionData[k]?.[loc] || { checked: false, remark: "" };
-                        rowData.push(record.checked ? "V" : "", record.remark || "");
+                        const rec = state.inspectionData[k]?.[loc] || { checked: false, remark: "" };
+                        rowData.push(rec.checked ? "V" : "", rec.remark || "");
                     });
                     aoa.push(rowData);
                 });
-
-                const ws = XLSX.utils.aoa_to_sheet(aoa);
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
             });
-
             XLSX.writeFile(wb, `斗六廠巡檢報表_${state.exportRange.start}_至_${state.exportRange.end}.xlsx`);
             window.toggleExport(false);
         };
@@ -373,11 +357,7 @@
             const val = select.value;
             if (!state.locations.includes(val)) { 
                 state.locations.push(val); 
-                state.locations.sort((a, b) => {
-                    const idA = parseInt(a.match(/\d+/) || 999);
-                    const idB = parseInt(b.match(/\d+/) || 999);
-                    return idA - idB;
-                });
+                state.locations.sort((a, b) => parseInt(a.match(/\d+/) || 999) - parseInt(b.match(/\d+/) || 999));
             }
             state.showAddSelect = false;
             render();
@@ -391,29 +371,42 @@
             const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             const key = getDateKey(state.selectedDate);
 
-            // --- 雲端儲存邏輯 ---
             if (state.user) {
                 try {
+                    // 同時更新巡檢數據與全域配置 (確保清單不被還原)
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
                     await setDoc(docRef, {
                         records: state.inspectionData[key] || {},
                         inspector: state.inspectors[key] || "",
                         saveTime: timeStr,
-                        locations: state.locations // 同步儲存目前巡檢項目清單
+                        currentLocations: state.locations // 隨日期存下當下的項目
                     }, { merge: true });
+
+                    // 額外存一個 Global Config 確保下次開啟時清單是正確的
+                    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
+                    await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
+
                 } catch (e) { console.error("雲端存檔失敗:", e); }
             }
             state.lastSaveTimes[key] = timeStr;
             setTimeout(() => { state.saveStatus = false; window.setView('home'); }, 1000);
         };
 
-        // --- 初始化 & 雲端連動 ---
+        // --- 初始化 & 雲端連動 (修復點) ---
         const initApp = async () => {
             try {
                 await signInAnonymously(auth);
-                onAuthStateChanged(auth, (user) => {
+                onAuthStateChanged(auth, async (user) => {
                     state.user = user;
                     if (user) {
+                        // 1. 先抓全域配置 (避免被還原成前20筆)
+                        const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
+                        const configSnap = await getDoc(configRef);
+                        if (configSnap.exists() && configSnap.data().activeLocations) {
+                            state.locations = configSnap.data().activeLocations;
+                        }
+
+                        // 2. 監聽所有巡檢數據
                         const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');
                         onSnapshot(dataRef, (snapshot) => {
                             snapshot.forEach(doc => {
@@ -421,17 +414,13 @@
                                 state.inspectionData[doc.id] = d.records || {};
                                 state.inspectors[doc.id] = d.inspector || "";
                                 state.lastSaveTimes[doc.id] = d.saveTime || "";
-                                // 如果雲端有儲存過項目清單，則以雲端為準
-                                if (d.locations && d.locations.length > 0) {
-                                    state.locations = d.locations;
-                                }
                             });
                             render();
                         });
                     }
                 });
             } catch (e) {
-                console.warn("Firebase 連線失敗，改為本地操作模式:", e);
+                console.warn("Firebase 連線失敗:", e);
                 render();
             }
         };
