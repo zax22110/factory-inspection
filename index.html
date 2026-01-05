@@ -36,10 +36,11 @@
 <body class="bg-blue-50 text-slate-800 pb-28">
 
     <div id="root" class="max-w-2xl mx-auto px-4 py-8">
-        <!-- 內容由 JavaScript 動態渲染 -->
-        <div class="flex flex-col items-center justify-center min-h-[60vh]">
+        <!-- 初始載入動畫 -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center min-h-[60vh]">
             <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
             <div class="animate-pulse text-blue-600 font-bold tracking-widest">雲端資料同步中...</div>
+            <p class="text-xs text-slate-400 mt-4">若長時間無反應，請檢查 Firebase 匿名登入是否開啟</p>
         </div>
     </div>
 
@@ -49,7 +50,7 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
         // ==========================================
-        // 1. Firebase 金鑰配置 (已啟動雲端連動)
+        // Firebase 金鑰配置 (已鎖定金鑰)
         // ==========================================
         const firebaseConfig = { 
             apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c", 
@@ -68,17 +69,18 @@
         // --- 全域狀態 ---
         window.state = {
             view: 'home',
-            selectedDate: new Date(), // 動態設定為今天
+            selectedDate: new Date(), 
             currentMonth: new Date().getMonth(), 
             user: null,
             inspectionData: {},
             inspectors: {},
             lastSaveTimes: {},
-            locations: [], // 雲端讀取後更新
+            locations: [], 
             activeGuide: null,
             showAddSelect: false,
             isExporting: false,
             saveStatus: false,
+            isAppReady: false, // 標記是否已讀取完基礎配置
             exportRange: { 
                 start: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`, 
                 end: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-31` 
@@ -94,7 +96,7 @@
             "41*女公共廁所", "42*殘障公共廁所", "43*公共置物櫃", "44*人體工房"
         ];
 
-        // 預設清單 (首次使用時顯示前 20 項)
+        // 預設清單
         state.locations = guideItems.slice(0, 20);
 
         // --- 工具函式 ---
@@ -127,6 +129,9 @@
 
         // --- 核心渲染 ---
         window.render = () => {
+            // 如果還沒準備好，不渲染主畫面（防止閃爍）
+            if (!state.isAppReady) return;
+
             const root = document.getElementById('root');
             const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus } = state;
             const currentKey = getDateKey(selectedDate);
@@ -164,12 +169,12 @@
                             </div>
                         </section>
 
-                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50">
+                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50 text-center">
                             <div class="flex items-center gap-2 mb-3 px-1 text-blue-900">
                                 <i data-lucide="info" class="text-blue-600 w-4 h-4"></i>
                                 <h3 class="font-black text-blue-900 text-sm">區域指南</h3>
                             </div>
-                            <div class="grid grid-cols-3 gap-1.5 text-center">
+                            <div class="grid grid-cols-3 gap-1.5">
                                 ${guideItems.map(item => `
                                     <button onclick="showGuide('${item}')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95">
                                         <span class="text-[11px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">${item}</span>
@@ -199,10 +204,9 @@
                                     const dKey = `2026-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                     const rate = calculateRate(dKey);
                                     const isWeekend = (i % 7 === 0 || i % 7 === 6);
-                                    const weekendClass = isWeekend ? 'bg-blue-100/60' : 'bg-white';
                                     return `
                                         <button onclick="setView('details', new Date(2026, ${currentMonth}, ${day}))" 
-                                                class="calendar-day-btn rounded-xl border border-blue-50 hover:bg-blue-50 transition-all active:scale-90 shadow-sm ${weekendClass}">
+                                                class="calendar-day-btn rounded-xl border border-blue-50 hover:bg-blue-50 transition-all active:scale-90 shadow-sm ${isWeekend ? 'bg-blue-100/60' : 'bg-white'}">
                                             <span class="text-xs font-black ${isWeekend ? 'text-blue-700' : 'text-slate-600'}">${day}</span>
                                             ${rate > 0 ? `<div class="w-1.5 h-1.5 rounded-full mt-1 ${rate === 100 ? 'bg-green-400' : 'bg-orange-400'}"></div>` : ''}
                                         </button>
@@ -224,26 +228,22 @@
                         
                         <div class="bg-blue-600 p-5 text-white">
                             <div class="flex justify-between items-center mb-5 gap-4">
-                                <!-- 上左: 日期 -->
                                 <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner">
                                     <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <span class="text-sm font-bold truncate">${currentKey}</span>
                                 </div>
-                                <!-- 上右: 巡檢人員 -->
                                 <div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white">
                                     <i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <input type="text" placeholder="姓名" value="${inspectors[currentKey] || ""}" onchange="updateInspector('${currentKey}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">
                                 </div>
                             </div>
                             <div class="flex justify-between items-end">
-                                <!-- 下左: 進度 + 快捷儲存按鈕 -->
                                 <div class="flex items-center gap-2">
                                     <div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg">進度: ${rate}%</div>
                                     <button onclick="saveData()" class="bg-blue-500 hover:bg-blue-400 text-white p-1.5 rounded-xl shadow-md active:scale-95 transition-all">
                                         <i data-lucide="save" class="w-3.5 h-3.5"></i>
                                     </button>
                                 </div>
-                                <!-- 下右: 存檔時間 -->
                                 <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">
                                     <i data-lucide="clock" class="w-2.5 h-2.5"></i> ${saveTime ? saveTime : '尚未存檔'}
                                 </div>
@@ -289,7 +289,7 @@
                             </table>
                         </div>
 
-                        <div class="p-4 space-y-4">
+                        <div class="p-4 space-y-4 text-center">
                             ${!showAddSelect ? `
                                 <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold">+ 新增巡檢區域</button>
                             ` : `
@@ -326,7 +326,24 @@
             lucide.createIcons();
         }
 
-        // --- 核心邏輯：Excel 報表 ---
+        // --- 功能控制 ---
+        window.saveData = async () => {
+            state.saveStatus = true; render();
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const key = getDateKey(state.selectedDate);
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
+                await setDoc(docRef, { records: state.inspectionData[key] || {}, inspector: state.inspectors[key] || "", saveTime: timeStr }, { merge: true });
+                const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
+                await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
+                state.lastSaveTimes[key] = timeStr;
+            } catch (e) { console.error("雲端存檔失敗:", e); }
+            
+            setTimeout(() => { state.saveStatus = false; window.setView('home'); }, 1000);
+        };
+
         window.handleExport = () => {
             const wb = XLSX.utils.book_new();
             const start = new Date(state.exportRange.start);
@@ -360,7 +377,6 @@
             window.toggleExport(false);
         };
 
-        // --- 互動功能 ---
         window.setView = (v, d) => { state.view = v; if (d) { state.selectedDate = d; state.currentMonth = d.getMonth(); } render(); };
         window.changeMonth = (delta) => { let next = state.currentMonth + delta; if (next < 0) next = 11; if (next > 11) next = 0; state.currentMonth = next; render(); };
         window.toggleCheck = (loc) => { const k = getDateKey(state.selectedDate); if (!state.inspectionData[k]) state.inspectionData[k] = {}; if (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = { checked: false, remark: "" }; state.inspectionData[k][loc].checked = !state.inspectionData[k][loc].checked; render(); };
@@ -370,7 +386,7 @@
         window.toggleAdd = (show) => { state.showAddSelect = show; render(); };
         window.toggleExport = (show) => { state.isExporting = show; render(); };
         window.updateExportRange = (type, val) => { state.exportRange[type] = val; };
-
+        window.removeLocation = (loc) => { state.locations = state.locations.filter(l => l !== loc); render(); };
         window.addLocation = () => {
             const select = document.getElementById('newLocSelect');
             const val = select.value;
@@ -382,56 +398,30 @@
             render();
         };
 
-        window.removeLocation = (loc) => { state.locations = state.locations.filter(l => l !== loc); render(); };
-        
-        // --- 雲端存檔邏輯 (解決卡死問題) ---
-        window.saveData = async () => {
-            state.saveStatus = true; render();
-            const now = new Date();
-            const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            const key = getDateKey(state.selectedDate);
-
-            try {
-                // 1. 同步當日紀錄
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
-                await setDoc(docRef, {
-                    records: state.inspectionData[key] || {},
-                    inspector: state.inspectors[key] || "",
-                    saveTime: timeStr,
-                }, { merge: true });
-
-                // 2. 同步全域清單 (跨裝置一致)
-                const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
-                await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
-
-                state.lastSaveTimes[key] = timeStr;
-            } catch (e) {
-                console.error("雲端存檔失敗:", e);
-                state.lastSaveTimes[key] = timeStr + " (本地)";
-            } finally {
-                // 強制延遲確保動畫感，然後關閉狀態
-                setTimeout(() => {
-                    state.saveStatus = false;
-                    window.setView('home');
-                }, 1000);
-            }
-        };
-
-        // --- 初始化 & 跨裝置讀取 ---
+        // --- 初始化 & 穩定啟動邏輯 ---
         const initApp = async () => {
+            // 安全開關：如果 5 秒後雲端還沒反應，強制進入 App
+            const safetyTimeout = setTimeout(() => {
+                if (!state.isAppReady) {
+                    console.warn("雲端同步超時，強制進入系統...");
+                    state.isAppReady = true;
+                    render();
+                }
+            }, 5000);
+
             try {
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, async (user) => {
                     state.user = user;
                     if (user) {
-                        // 1. 先抓全域配置 (確保巡檢區域清單與電腦同步)
+                        // 1. 抓取全域配置 (巡檢清單)
                         const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                         const configSnap = await getDoc(configRef);
                         if (configSnap.exists() && configSnap.data().activeLocations) {
                             state.locations = configSnap.data().activeLocations;
                         }
 
-                        // 2. 監聽所有巡檢數據
+                        // 2. 監聽巡檢數據
                         const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');
                         onSnapshot(dataRef, (snapshot) => {
                             snapshot.forEach(doc => {
@@ -440,13 +430,17 @@
                                 state.inspectors[doc.id] = d.inspector || "";
                                 state.lastSaveTimes[doc.id] = d.saveTime || "";
                             });
+                            // 到此時標記為準備好，並取消安全超時
+                            clearTimeout(safetyTimeout);
+                            state.isAppReady = true;
                             render();
                         });
                     }
                 });
-            } catch (e) {
-                console.warn("Firebase Init Error:", e);
-                render();
+            } catch (e) { 
+                console.error("Firebase 連線失敗:", e);
+                state.isAppReady = true; 
+                render(); 
             }
         };
 
