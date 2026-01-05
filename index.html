@@ -20,7 +20,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         .remark-input {
-            color: #dc2626; /* 缺失備註設為紅色 */
+            color: #dc2626; 
             font-weight: 700;
             text-align: center;
         }
@@ -35,12 +35,13 @@
 </head>
 <body class="bg-blue-50 text-slate-800 pb-28">
 
-    <div id="root" class="max-w-2xl mx-auto px-4 py-8">
+    <div id="root" class="max-w-2xl mx-auto px-4 py-8 text-center">
         <!-- 初始載入動畫 -->
         <div id="loading-screen" class="flex flex-col items-center justify-center min-h-[60vh]">
             <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div class="animate-pulse text-blue-600 font-bold tracking-widest">雲端資料同步中...</div>
-            <p class="text-xs text-slate-400 mt-4">首次啟動或網路不穩時請稍候</p>
+            <div class="animate-pulse text-blue-600 font-bold tracking-widest">雲端權限驗證中...</div>
+            <p id="status-text" class="text-xs text-slate-400 mt-4 px-4">正在同步區域指南與數據...</p>
+            <p id="error-message" class="text-xs text-red-500 mt-2 px-4"></p>
         </div>
     </div>
 
@@ -50,7 +51,7 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 金鑰配置 (使用您提供的專案金鑰)
+        // 1. Firebase 配置 (已導入最新金鑰)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c",
@@ -65,7 +66,55 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = "douliu-factory-system"; // 使用您的專案 ID 作為 appId
+        const appId = "douliu-factory-system"; 
+
+        // --- 指南數據庫 ---
+        const areaGuidelines = {
+            "01館外週邊": { req: "保持路面無垃圾、菸蒂，花圃無雜物。", sug: "檢查排水口是否阻塞，路燈是否正常。" },
+            "02櫃台接待": { req: "桌面清空、儀容整潔，維持微笑服務。", sug: "檢查文具是否充足，環境無異味。" },
+            "03營運辦公室": { req: "文件分類擺放，地面乾淨。", sug: "下班前確保電源關閉。" },
+            "04商品區": { req: "商品陳列整齊，標價清晰。", sug: "檢查有無過期產品，貨架無灰塵。" },
+            "05會員休息區": { req: "沙發整齊，桌面上無水漬。", sug: "書報架整理，維持空氣流通。" },
+            "06會務部": { req: "面談區整潔，電腦螢幕無指紋。", sug: "確保會員資料妥善收納。" },
+            "07教練部": { req: "辦公桌清爽，教練服裝統一。", sug: "器材歸位督導狀況。" },
+            "08心肺訓練區": { req: "機台扶手、面板無汗漬、無灰塵。", sug: "檢查電視螢幕與耳機孔功能。" },
+            "09重訓器械訓練區": { req: "坐墊無破損、無汗漬，槓片擺放整齊。", sug: "檢查鋼索潤滑度與插銷安全。" },
+            "10私人教練訓練區": { req: "小器材歸位，軟墊保持乾淨。", sug: "檢查彈力帶有無損壞、草皮無髒污。" },
+            "11男更衣室(含廁所)": { req: "地面乾燥無水漬，洗手台無積水。", sug: "檢查備品、衛生紙是否充足，異味排除。" },
+            "12女更衣室(含廁所)": { req: "地面清潔，化妝台鏡面無污漬。", sug: "確保垃圾桶不過滿，頭髮即時清理。" },
+            "13男更淋浴間": { req: "牆面無霉斑，排水孔無毛髮堵塞。", sug: "檢查沐浴乳是否有補充。" },
+            "14女更淋浴間": { req: "排水順暢，地磚無濕滑皂垢。", sug: "確保浴簾或門片無破損。" },
+            "15安全設備": { req: "滅火器指針在綠色區，逃生門無雜物。", sug: "檢查緊急照明燈與火警主機狀態。" },
+            "16全館公共空間": { req: "天花板無蜘蛛網，空調風口清潔。", sug: "檢查飲水機周邊乾燥度。" },
+            "17員工休息室": { req: "冰箱無過期食物，微波爐內部清潔。", sug: "確保垃圾確實分類。" },
+            "18工務室": { req: "工具歸位，地面無油漬。", sug: "巡查維修備品庫存。" },
+            "19工務倉庫機房": { req: "機房重地禁放雜物，儀表數值正常。", sug: "檢查馬達有無異音、漏水現象。" },
+            "20員工": { req: "服務態度主動積極，隨手撿拾垃圾。", sug: "確認同仁服裝與識別證配戴。" },
+            "21*智能販售區": { req: "機台外觀清潔，補貨區無雜物。", sug: "確認付款系統正常。" },
+            "22*專業拳擊訓練區": { req: "沙袋無破損，軟墊每日消毒。", sug: "檢查拳套有無異味。" },
+            "23*女性訓練區": { req: "維持獨立空間隱私，環境溫馨整潔。", sug: "檢查器械是否適合女性使用。" },
+            "24*PU跑道": { req: "表面無破損，邊角無堆積灰塵。", sug: "檢查跑道標線是否清晰。" },
+            "25*道館": { req: "榻榻米或地墊無縫隙髒污。", sug: "練習器材定時擦拭。" },
+            "26*攀岩區": { req: "岩點牢固無鬆動，安全繩無損壞。", sug: "下方軟墊位置正確且厚度足夠。" },
+            "27*飛輪教室": { req: "機台汗漬徹底擦拭，音響正常。", sug: "課後確保通風系統開啟。" },
+            "28*有氧教室": { req: "地板防滑，鏡面明亮。", sug: "檢查瑜珈墊與階梯板清潔度。" },
+            "29*壁球室": { req: "牆面無明顯黑色刮痕，地板無沙塵。", sug: "檢查照明亮度是否足夠。" },
+            "30*桌球室": { req: "桌布無破損，周圍護網整齊。", sug: "確保地面乾燥防止滑倒。" },
+            "31*籃球場": { req: "球網無脫線，地板維持彈性與防滑。", sug: "檢查籃框與籃板穩固度。" },
+            "32*撞球室": { req: "檯布平整，桿架整齊。", sug: "室內禁菸與飲食管控。" },
+            "33*電動遊戲區": { req: "螢幕面板清潔，座椅無污漬。", sug: "檢查線路是否凌亂。" },
+            "34*兒童館": { req: "球池球體無破損，玩具定期消毒。", sug: "確保防護包柱無脫落。" },
+            "35*游泳池": { req: "水質清澈、餘氯檢測達標，地面無水窪。", sug: "檢查救生器材位置，溢水溝清潔。" },
+            "36*男三溫暖": { req: "烤箱木頭乾燥，冷熱水池壁無黏垢。", sug: "檢查蒸氣量是否適中。" },
+            "37*女三溫暖": { req: "梳妝區頭髮即時清掃，池水循環正常。", sug: "維持更衣櫃內無異味。" },
+            "38*男蒸氣烤箱": { req: "溫控器顯示正常，噴頭無堵塞。", sug: "檢查木板是否有鬆動。" },
+            "39*女蒸氣烤箱": { req: "環境濕潤但無霉味，排水順暢。", sug: "確保緊急求救鈴測試正常。" },
+            "40*男公共廁所": { req: "小便斗無尿垢，地板乾爽。", sug: "定時補充洗手乳。" },
+            "41*女公共廁所": { req: "隔板與門板無塗鴉雜物，馬桶乾淨。", sug: "確保垃圾桶有蓋且不過滿。" },
+            "42*殘障公共廁所": { req: "扶手穩固，無障礙空間通暢。", sug: "特別檢查求救拉繩長度。" },
+            "43*公共置物櫃": { req: "櫃內無遺留物，鎖頭轉動順暢。", sug: "櫃頂無灰塵堆積。" },
+            "44*人體工房": { req: "美容床巾一客一換，精油香氣適中。", sug: "環境維持安靜與隱密。" }
+        };
 
         // --- 全域狀態 ---
         window.state = {
@@ -81,6 +130,7 @@
             showAddSelect: false,
             isExporting: false,
             saveStatus: false,
+            saveMessage: "正在同步雲端...",
             isAppReady: false, 
             exportRange: { 
                 start: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`, 
@@ -88,19 +138,9 @@
             }
         };
 
-        const guideItems = [
-            "01館外週邊", "02櫃台接待", "03營運辦公室", "04商品區", "05會員休息區", "06會務部", "07教練部", "08心肺訓練區",
-            "09重訓器械訓練區", "10私人教練訓練區", "11男更衣室(含廁所)", "12女更衣室(含廁所)", "13男更淋浴間", "14女更淋浴間", "15安全設備", "16全館公共空間",
-            "17員工休息室", "18工務室", "19工務倉庫機房", "20員工", "21*智能販售區", "22*專業拳擊訓練區", "23*女性訓練區", "24*PU跑道",
-            "25*道館", "26*攀岩區", "27*飛輪教室", "28*有氧教室", "29*壁球室", "30*桌球室", "31*籃球場", "32*撞球室",
-            "33*電動遊戲區", "34*兒童館", "35*游泳池", "36*男三溫暖", "37*女三溫暖", "38*男蒸氣烤箱", "39*女蒸氣烤箱", "40*男公共廁所",
-            "41*女公共廁所", "42*殘障公共廁所", "43*公共置物櫃", "44*人體工房"
-        ];
-
-        // 預設設定：先抓取前 20 項，待雲端載入後更新
+        const guideItems = Object.keys(areaGuidelines);
         state.locations = guideItems.slice(0, 20);
 
-        // --- 工具函式 ---
         const getDateKey = (date) => {
             const d = new Date(date);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -132,7 +172,7 @@
             if (!state.isAppReady) return;
 
             const root = document.getElementById('root');
-            const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus } = state;
+            const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus, saveMessage } = state;
             const currentKey = getDateKey(selectedDate);
             const todayKey = getDateKey(new Date());
 
@@ -142,7 +182,7 @@
                         <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg">
                             <i data-lucide="clipboard-check" class="w-5 h-5"></i>
                         </div>
-                        <h1 class="text-2xl font-black text-blue-900 tracking-tighter">環境巡檢系統</h1>
+                        <h1 class="text-2xl font-black text-blue-900 tracking-tighter text-left">斗六廠巡檢</h1>
                     </div>
                     <div class="bg-blue-500 px-3 py-1.5 rounded-xl text-[10px] font-black text-white shadow-lg uppercase tracking-wider">2026 Admin</div>
                 </header>
@@ -154,12 +194,12 @@
                     <div class="space-y-4 animate-in text-left">
                         <section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900">
                             <div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"><i data-lucide="wind" class="w-24 h-24"></i></div>
-                            <div class="z-10">
+                            <div class="z-10 text-left">
                                 <p class="text-blue-500 font-bold text-xs uppercase tracking-widest text-left">Today's Goal</p>
                                 <p class="text-2xl font-black text-blue-900">${todayKey}</p>
-                                <button onclick="setView('details', new Date())" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">執行今日巡檢</button>
+                                <button onclick="setView('details', new Date())" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all">執行今日巡檢</button>
                             </div>
-                            <div class="relative w-20 h-20 z-10 flex items-center justify-center">
+                            <div class="relative w-20 h-20 z-10 flex items-center justify-center text-center">
                                 <svg class="w-20 h-20 transform -rotate-90">
                                     <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" class="text-slate-50" />
                                     <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="${213.63 - (213.63 * rate) / 100}" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" />
@@ -168,15 +208,15 @@
                             </div>
                         </section>
 
-                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50 text-center">
-                            <div class="flex items-center gap-2 mb-3 px-1 text-blue-900">
+                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50 text-center text-blue-900">
+                            <div class="flex items-center gap-2 mb-3 px-1 text-left">
                                 <i data-lucide="info" class="text-blue-600 w-4 h-4"></i>
                                 <h3 class="font-black text-blue-900 text-sm">區域指南</h3>
                             </div>
                             <div class="grid grid-cols-3 gap-1.5">
                                 ${guideItems.map(item => `
                                     <button onclick="showGuide('${item}')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95">
-                                        <span class="text-[11px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">${item}</span>
+                                        <span class="text-[10.5px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">${item}</span>
                                     </button>
                                 `).join('')}
                             </div>
@@ -187,7 +227,7 @@
                 const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
                 const calendarDays = generateCalendarDays(currentMonth);
                 html += `
-                    <div class="flex flex-col items-center animate-in">
+                    <div class="flex flex-col items-center animate-in text-blue-900">
                         <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6 text-blue-900">
                             <div class="flex justify-between items-center mb-6 px-1">
                                 <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90 transition-all"><i data-lucide="chevron-left"></i></button>
@@ -213,8 +253,8 @@
                                 }).join('')}
                             </div>
                         </div>
-                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 active:scale-95 uppercase tracking-wider">
-                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 匯出巡檢 Excel 報表
+                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 transition-all active:scale-95 uppercase tracking-wider text-center">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 匯出 Excel 報表
                         </button>
                     </div>
                 `;
@@ -223,11 +263,16 @@
                 const saveTime = lastSaveTimes[currentKey] || "";
                 html += `
                     <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left text-blue-900">
-                        ${saveStatus ? '<div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center font-bold text-blue-600"><div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>同步雲端中...</div>' : ''}
+                        ${saveStatus ? `
+                            <div class="absolute inset-0 z-[110] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center font-bold text-blue-600 p-8 text-center">
+                                <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <div class="leading-relaxed">${saveMessage}</div>
+                            </div>
+                        ` : ''}
                         
                         <div class="bg-blue-600 p-5 text-white">
                             <div class="flex justify-between items-center mb-5 gap-4">
-                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner text-white">
+                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner text-white text-left">
                                     <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <span class="text-sm font-bold truncate">${currentKey}</span>
                                 </div>
@@ -237,13 +282,13 @@
                                 </div>
                             </div>
                             <div class="flex justify-between items-end">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 text-left">
                                     <div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg">進度: ${rate}%</div>
                                     <button onclick="saveData()" class="bg-blue-500 hover:bg-blue-400 text-white p-1.5 rounded-xl shadow-md active:scale-95 transition-all">
                                         <i data-lucide="save" class="w-3.5 h-3.5"></i>
                                     </button>
                                 </div>
-                                <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">
+                                <div class="flex items-center gap-1 text-[10px] text-blue-100 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20 text-center">
                                     <i data-lucide="clock" class="w-2.5 h-2.5"></i> ${saveTime ? saveTime : '尚未存檔'}
                                 </div>
                             </div>
@@ -251,7 +296,7 @@
 
                         <div class="overflow-x-auto no-scrollbar">
                             <table class="w-full table-fixed border-collapse">
-                                <thead class="bg-blue-50 text-blue-900 uppercase font-black border-b border-blue-100">
+                                <thead class="bg-blue-50 text-blue-900 uppercase font-black border-b border-blue-100 text-blue-900">
                                     <tr>
                                         <th class="px-1 py-4 text-center w-12 text-[13px]">狀態</th>
                                         <th class="px-2 py-4 w-[25%] text-center border-r border-blue-100 text-[13px]">區域</th>
@@ -271,7 +316,7 @@
                                                     </button>
                                                 </td>
                                                 <td class="border-r border-blue-50 text-center px-1">
-                                                    <button onclick="showGuide('${loc}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[12px] leading-tight justify-center w-full text-center">
+                                                    <button onclick="showGuide('${loc}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[11.5px] leading-tight justify-center w-full text-center">
                                                         ${area.name} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200"></i>
                                                     </button>
                                                 </td>
@@ -279,7 +324,7 @@
                                                     <input type="text" value="${data.remark || ""}" onblur="updateRemark('${loc}', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]">
                                                 </td>
                                                 <td class="text-center">
-                                                    <button onclick="removeLocation('${loc}')" class="text-slate-100 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
+                                                    <button onclick="removeLocation('${loc}')" class="text-slate-100 hover:text-red-400 p-1 text-center"><i data-lucide="trash-2" class="w-4 h-4 mx-auto text-center"></i></button>
                                                 </td>
                                             </tr>
                                         `;
@@ -300,7 +345,7 @@
                                     <button onclick="toggleAdd(false)" class="p-2 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
                                 </div>
                             `}
-                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest">
+                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest text-center">
                                 <i data-lucide="save" class="w-5 h-5"></i> 存檔巡檢表
                             </button>
                         </div>
@@ -310,54 +355,72 @@
 
             // --- 底部導覽列 ---
             html += `
-                <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50">
+                <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50 text-center">
                     <button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all ${view === 'home' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-400'}">
-                        <i data-lucide="home" class="w-4 h-4"></i><span class="text-[10px] font-black">首頁</span>
+                        <i data-lucide="home" class="w-4 h-4 mx-auto"></i><span class="text-[10px] font-black">首頁</span>
                     </button>
                     <div class="w-px h-6 bg-slate-100 mx-1"></div>
                     <button onclick="setView('calendar')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all ${view === 'calendar' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-400'}">
-                        <i data-lucide="layout-grid" class="w-4 h-4"></i><span class="text-[10px] font-black">日曆</span>
+                        <i data-lucide="layout-grid" class="w-4 h-4 mx-auto"></i><span class="text-[10px] font-black">日曆</span>
                     </button>
                 </nav>
             `;
+
+            // --- 彈窗區域指南 ---
+            if (activeGuide) {
+                const guide = areaGuidelines[activeGuide] || { req: "請參照標準清潔程序進行環境維護。", sug: "觀察地板、設備及異味狀態。" };
+                html += `
+                    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm animate-in text-left text-blue-900">
+                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-blue-100">
+                            <div class="bg-blue-600 p-6 text-white relative text-center">
+                                <button onclick="showGuide(null)" class="absolute top-4 right-4 p-1 hover:bg-white/20 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                                <h3 class="text-xl font-black">${activeGuide}</h3>
+                            </div>
+                            <div class="p-6 space-y-6 text-sm text-left">
+                                <div><h4 class="font-bold text-blue-900 mb-1 flex items-center gap-1"><i data-lucide="target" class="w-4 h-4 text-blue-600"></i> 巡場要求</h4><p class="text-slate-600 leading-relaxed text-[13px]">${guide.req}</p></div>
+                                <div><h4 class="font-bold text-blue-900 mb-1 flex items-center gap-1"><i data-lucide="lightbulb" class="w-4 h-4 text-blue-600"></i> 建議查核方向</h4><p class="text-slate-600 leading-relaxed text-[13px]">${guide.sug}</p></div>
+                            </div>
+                            <button onclick="showGuide(null)" class="w-full bg-blue-600 text-white py-4 font-bold active:bg-blue-700 transition-colors uppercase tracking-widest">確認並返回</button>
+                        </div>
+                    </div>
+                `;
+            }
 
             root.innerHTML = html;
             lucide.createIcons();
         }
 
-        // --- 存檔邏輯 (同步至 Firebase) ---
+        // --- 功能控制 ---
         window.saveData = async () => {
-            state.saveStatus = true; render();
+            if (!state.user) return;
+            state.saveStatus = true; 
+            state.saveMessage = "正在同步雲端...";
+            render();
+            
             const now = new Date();
             const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             const key = getDateKey(state.selectedDate);
 
             try {
-                // 1. 同步當日巡檢紀錄
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
-                await setDoc(docRef, {
-                    records: state.inspectionData[key] || {},
-                    inspector: state.inspectors[key] || "",
-                    saveTime: timeStr,
-                }, { merge: true });
-
-                // 2. 同步全域清單順序 (確保跨裝置一致)
+                await setDoc(docRef, { records: state.inspectionData[key] || {}, inspector: state.inspectors[key] || "", saveTime: timeStr }, { merge: true });
                 const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                 await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
-
                 state.lastSaveTimes[key] = timeStr;
+                state.saveMessage = "存檔成功！";
+                render();
+                await new Promise(r => setTimeout(r, 600));
             } catch (e) {
-                console.error("雲端存檔失敗:", e);
-                state.lastSaveTimes[key] = timeStr + " (本地)";
+                console.error("存檔失敗:", e);
+                state.saveMessage = `存檔失敗！<br><span class="text-[10px] font-normal">${e.message}</span>`;
+                render();
+                await new Promise(r => setTimeout(r, 2000));
             } finally {
-                setTimeout(() => {
-                    state.saveStatus = false;
-                    window.setView('home');
-                }, 1200);
+                state.saveStatus = false;
+                window.setView('home');
             }
         };
 
-        // Excel 報表
         window.handleExport = () => {
             const wb = XLSX.utils.book_new();
             const start = new Date(state.exportRange.start);
@@ -387,11 +450,10 @@
                 });
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
             });
-            XLSX.writeFile(wb, `斗六廠巡檢報表_${state.exportRange.start}_至_${state.exportRange.end}.xlsx`);
+            XLSX.writeFile(wb, `斗六廠巡檢報表.xlsx`);
             window.toggleExport(false);
         };
 
-        // 互動功能
         window.setView = (v, d) => { state.view = v; if (d) { state.selectedDate = d; state.currentMonth = d.getMonth(); } render(); };
         window.changeMonth = (delta) => { let next = state.currentMonth + delta; if (next < 0) next = 11; if (next > 11) next = 0; state.currentMonth = next; render(); };
         window.toggleCheck = (loc) => { const k = getDateKey(state.selectedDate); if (!state.inspectionData[k]) state.inspectionData[k] = {}; if (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = { checked: false, remark: "" }; state.inspectionData[k][loc].checked = !state.inspectionData[k][loc].checked; render(); };
@@ -413,31 +475,28 @@
             render();
         };
 
-        // --- 初始化 & 跨裝置讀取 ---
+        // --- 初始化核心邏輯 (修正權限問題點) ---
         const initApp = async () => {
-            // 安全超時：3.5 秒後強制顯示介面，避免卡死
-            const timeout = setTimeout(() => {
-                if (!state.isAppReady) {
-                    state.isAppReady = true;
-                    render();
-                }
-            }, 3500);
-
+            const errDiv = document.getElementById('error-message');
+            const statusText = document.getElementById('status-text');
+            
             try {
+                statusText.innerText = "正在啟動安全驗證...";
                 await signInAnonymously(auth);
+                
                 onAuthStateChanged(auth, async (user) => {
-                    state.user = user;
                     if (user) {
-                        // 1. 抓取全域清單配置
+                        state.user = user;
+                        statusText.innerText = "驗證成功，正在下載全域指南與配置...";
+
                         try {
                             const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                             const configSnap = await getDoc(configRef);
                             if (configSnap.exists() && configSnap.data().activeLocations) {
                                 state.locations = configSnap.data().activeLocations;
                             }
-                        } catch (err) { console.warn("清單讀取失敗:", err); }
+                        } catch (e) { console.warn("清單配置讀取失敗，使用預設值。"); }
 
-                        // 2. 監聽所有巡檢數據
                         const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');
                         onSnapshot(dataRef, (snapshot) => {
                             snapshot.forEach(doc => {
@@ -446,20 +505,20 @@
                                 state.inspectors[doc.id] = d.inspector || "";
                                 state.lastSaveTimes[doc.id] = d.saveTime || "";
                             });
-                            clearTimeout(timeout);
                             state.isAppReady = true;
                             render();
                         }, (err) => {
-                            console.error("Snapshot 失敗:", err);
+                            console.error("監聽失敗:", err.message);
+                            errDiv.innerHTML = "雲端數據讀取受限。<br>請確認 Firebase Firestore 安全性規則已發佈。";
                             state.isAppReady = true;
                             render();
                         });
                     }
                 });
             } catch (e) {
-                console.warn("Firebase 初始化異常:", e);
-                state.isAppReady = true;
-                render();
+                console.error("Auth 失敗:", e.message);
+                errDiv.innerHTML = "系統啟動失敗: " + e.message;
+                setTimeout(() => { state.isAppReady = true; render(); }, 3000);
             }
         };
 
