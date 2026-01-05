@@ -1,449 +1,479 @@
-{\rtf1\ansi\ansicpg950\cocoartf2867
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
-
-\f0\fs24 \cf0 <!DOCTYPE html>\
-<html lang="zh-TW">\
-<head>\
-    <meta charset="UTF-8">\
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
-    <title>\uc0\u26007 \u20845 \u24288  2026 \u29872 \u22659 \u24033 \u27298 \u31995 \u32113 </title>\
-    <!-- Tailwind CSS -->\
-    <script src="https://cdn.tailwindcss.com"></script>\
-    <!-- Lucide Icons -->\
-    <script src="https://unpkg.com/lucide@latest"></script>\
-    <!-- SheetJS \uc0\u29992 \u20110 \u29983 \u25104 \u30495 \u27491 \u30340  Excel \u27284 \u26696  -->\
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\
-    <!-- Google Fonts -->\
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">\
-    <style>\
-        body \{ font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; \}\
-        .animate-in \{ animation: fadeIn 0.3s ease-out; \}\
-        @keyframes fadeIn \{ from \{ opacity: 0; transform: translateY(10px); \} to \{ opacity: 1; transform: translateY(0); \} \}\
-        .no-scrollbar::-webkit-scrollbar \{ display: none; \}\
-        .no-scrollbar \{ -ms-overflow-style: none; scrollbar-width: none; \}\
-        \
-        .remark-input \{\
-            color: #dc2626; /* red-600 */\
-            font-weight: 700;\
-            text-align: center;\
-        \}\
-        .calendar-day-btn \{\
-            aspect-ratio: 1 / 1;\
-            display: flex;\
-            flex-direction: column;\
-            align-items: center;\
-            justify-content: center;\
-        \}\
-    </style>\
-</head>\
-<body class="bg-blue-50 text-slate-800 pb-28 text-center">\
-\
-    <div id="root" class="max-w-2xl mx-auto px-4 py-8">\
-        <!-- \uc0\u20839 \u23481 \u30001  JavaScript \u21205 \u24907 \u28210 \u26579  -->\
-    </div>\
-\
-    <script type="module">\
-        import \{ initializeApp \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";\
-        import \{ getAuth, signInAnonymously, onAuthStateChanged \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";\
-        import \{ getFirestore, doc, setDoc, onSnapshot, collection \} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";\
-\
-        // ==========================================\
-        // 1. Firebase \uc0\u37329 \u38000 \u37197 \u32622  (\u24050 \u21855 \u21205 \u38642 \u31471 \u36899 \u21205 )\
-        // ==========================================\
-        const firebaseConfig = \{ \
-            apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c", \
-            authDomain: "douliu-factory-2026.firebaseapp.com", \
-            projectId: "douliu-factory-2026", \
-            storageBucket: "douliu-factory-2026.appspot.com", \
-            messagingSenderId: "782947103842", \
-            appId: "1:782947103842:web:9f8e7d6c5b4a3f21" \
-        \};\
-\
-        const app = initializeApp(firebaseConfig);\
-        const auth = getAuth(app);\
-        const db = getFirestore(app);\
-        const appId = "douliu-factory-2026";\
-\
-        // --- \uc0\u20840 \u22495 \u29376 \u24907  ---\
-        window.state = \{\
-            view: 'home',\
-            selectedDate: new Date(2026, 0, 4),\
-            currentMonth: 0, \
-            user: null,\
-            inspectionData: \{\},\
-            inspectors: \{\},\
-            lastSaveTimes: \{\},\
-            locations: [], \
-            activeGuide: null,\
-            showAddSelect: false,\
-            isExporting: false,\
-            saveStatus: false,\
-            exportRange: \{ start: "2026-01-01", end: "2026-01-31" \}\
-        \};\
-\
-        const guideItems = [\
-            "01\uc0\u39208 \u22806 \u36913 \u37002 ", "02\u27331 \u21488 \u25509 \u24453 ", "03\u29151 \u36939 \u36774 \u20844 \u23460 ", "04\u21830 \u21697 \u21312 ", "05\u26371 \u21729 \u20241 \u24687 \u21312 ", "06\u26371 \u21209 \u37096 ", "07\u25945 \u32244 \u37096 ", "08\u24515 \u32954 \u35347 \u32244 \u21312 ",\
-            "09\uc0\u37325 \u35347 \u22120 \u26800 \u35347 \u32244 \u21312 ", "10\u31169 \u20154 \u25945 \u32244 \u35347 \u32244 \u21312 ", "11\u30007 \u26356 \u34915 \u23460 (\u21547 \u24257 \u25152 )", "12\u22899 \u26356 \u34915 \u23460 (\u21547 \u24257 \u25152 )", "13\u30007 \u26356 \u28107 \u28020 \u38291 ", "14\u22899 \u26356 \u28107 \u28020 \u38291 ", "15\u23433 \u20840 \u35373 \u20633 ", "16\u20840 \u39208 \u20844 \u20849 \u31354 \u38291 ",\
-            "17\uc0\u21729 \u24037 \u20241 \u24687 \u23460 ", "18\u24037 \u21209 \u23460 ", "19\u24037 \u21209 \u20489 \u24235 \u27231 \u25151 ", "20\u21729 \u24037 ", "21*\u26234 \u33021 \u36009 \u21806 \u21312 ", "22*\u23560 \u26989 \u25331 \u25802 \u35347 \u32244 \u21312 ", "23*\u22899 \u24615 \u35347 \u32244 \u21312 ", "24*PU\u36305 \u36947 ",\
-            "25*\uc0\u36947 \u39208 ", "26*\u25856 \u23721 \u21312 ", "27*\u39131 \u36650 \u25945 \u23460 ", "28*\u26377 \u27687 \u25945 \u23460 ", "29*\u22721 \u29699 \u23460 ", "30*\u26700 \u29699 \u23460 ", "31*\u31811 \u29699 \u22580 ", "32*\u25758 \u29699 \u23460 ",\
-            "33*\uc0\u38651 \u21205 \u36938 \u25138 \u21312 ", "34*\u20818 \u31461 \u39208 ", "35*\u28216 \u27891 \u27744 ", "36*\u30007 \u19977 \u28331 \u26262 ", "37*\u22899 \u19977 \u28331 \u26262 ", "38*\u30007 \u33976 \u27683 \u28900 \u31665 ", "39*\u22899 \u33976 \u27683 \u28900 \u31665 ", "40*\u30007 \u20844 \u20849 \u24257 \u25152 ",\
-            "41*\uc0\u22899 \u20844 \u20849 \u24257 \u25152 ", "42*\u27544 \u38556 \u20844 \u20849 \u24257 \u25152 ", "43*\u20844 \u20849 \u32622 \u29289 \u27331 ", "44*\u20154 \u39636 \u24037 \u25151 "\
-        ];\
-\
-        // \uc0\u38928 \u35373 \u20677 \u39023 \u31034 \u21069  20 \u38917 \
-        state.locations = guideItems.slice(0, 20);\
-\
-        // --- \uc0\u24037 \u20855 \u20989 \u24335  ---\
-        const getDateKey = (date) => `$\{date.getFullYear()\}-$\{String(date.getMonth() + 1).padStart(2, '0')\}-$\{String(date.getDate()).padStart(2, '0')\}`;\
-        const cleanAreaName = (name) => name.replace(/^[0-9]+[*]?/, "");\
-        const splitArea = (name) => \{\
-            const match = name.match(/^([0-9]+[*]?)(.*)$/);\
-            return match ? \{ id: match[1], name: match[2] \} : \{ id: "", name: name \};\
-        \};\
-\
-        window.calculateRate = (dateKey) => \{\
-            const dayData = state.inspectionData[dateKey];\
-            if (!dayData || state.locations.length === 0) return 0;\
-            const checkedCount = state.locations.filter(loc => dayData[loc]?.checked).length;\
-            return Math.round((checkedCount / state.locations.length) * 100);\
-        \};\
-\
-        function generateCalendarDays(month) \{\
-            const year = 2026;\
-            const firstDay = new Date(year, month, 1).getDay(); \
-            const daysInMonth = new Date(year, month + 1, 0).getDate(); \
-            const days = [];\
-            for (let i = 0; i < firstDay; i++) days.push(null);\
-            for (let d = 1; d <= daysInMonth; d++) days.push(d);\
-            return days;\
-        \}\
-\
-        // --- \uc0\u26680 \u24515 \u28210 \u26579  ---\
-        window.render = () => \{\
-            const root = document.getElementById('root');\
-            const \{ view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus \} = state;\
-            const currentKey = getDateKey(selectedDate);\
-            const todayKey = getDateKey(new Date(2026, 0, 4));\
-\
-            let html = `\
-                <header class="flex justify-between items-center mb-6 px-1">\
-                    <h1 class="text-2xl font-black text-blue-900 tracking-tighter">\uc0\u26007 \u20845 \u24288 \u29872 \u22659 \u24033 \u27298 </h1>\
-                    <div class="bg-blue-500 px-3 py-1.5 rounded-xl text-[10px] font-black text-white shadow-lg uppercase tracking-wider">2026 Admin</div>\
-                </header>\
-            `;\
-\
-            if (view === 'home') \{\
-                const rate = calculateRate(todayKey);\
-                html += `\
-                    <div class="space-y-4 animate-in text-left">\
-                        <section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900">\
-                            <div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"><i data-lucide="wind" class="w-24 h-24"></i></div>\
-                            <div class="z-10">\
-                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest text-left">Today's Goal</p>\
-                                <p class="text-2xl font-black text-blue-900">$\{todayKey\}</p>\
-                                <button onclick="setView('details', new Date(2026,0,4))" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">\uc0\u22519 \u34892 \u24033 \u27298 </button>\
-                            </div>\
-                            <div class="relative w-20 h-20 z-10 flex items-center justify-center">\
-                                <svg class="w-20 h-20 transform -rotate-90">\
-                                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" class="text-slate-50" />\
-                                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="$\{213.63 - (213.63 * rate) / 100\}" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" />\
-                                </svg>\
-                                <span class="absolute text-lg font-black text-blue-900">$\{rate\}%</span>\
-                            </div>\
-                        </section>\
-\
-                        <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50">\
-                            <div class="flex items-center gap-2 mb-3 px-1 text-blue-900">\
-                                <i data-lucide="info" class="text-blue-600 w-4 h-4"></i>\
-                                <h3 class="font-black text-blue-900 text-sm">\uc0\u21312 \u22495 \u25351 \u21335 </h3>\
-                            </div>\
-                            <div class="grid grid-cols-3 gap-1.5 text-center">\
-                                $\{guideItems.map(item => `\
-                                    <button onclick="showGuide('$\{item\}')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95">\
-                                        <span class="text-[11px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">$\{item\}</span>\
-                                    </button>\
-                                `).join('')\}\
-                            </div>\
-                        </section>\
-                    </div>\
-                `;\
-            \} else if (view === 'calendar') \{\
-                const months = ["1\uc0\u26376 ", "2\u26376 ", "3\u26376 ", "4\u26376 ", "5\u26376 ", "6\u26376 ", "7\u26376 ", "8\u26376 ", "9\u26376 ", "10\u26376 ", "11\u26376 ", "12\u26376 "];\
-                const calendarDays = generateCalendarDays(currentMonth);\
-                html += `\
-                    <div class="flex flex-col items-center animate-in">\
-                        <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6 text-blue-900">\
-                            <div class="flex justify-between items-center mb-6 px-1">\
-                                <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"><i data-lucide="chevron-left"></i></button>\
-                                <h3 class="text-xl font-black text-blue-900 tracking-tight">2026\uc0\u24180  $\{months[currentMonth]\}</h3>\
-                                <button onclick="changeMonth(1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"><i data-lucide="chevron-right"></i></button>\
-                            </div>\
-                            <div class="grid grid-cols-7 gap-1 mb-3 text-center text-[10px] font-black text-slate-300 uppercase">\
-                                <div>\uc0\u26085 </div><div>\u19968 </div><div>\u20108 </div><div>\u19977 </div><div>\u22235 </div><div>\u20116 </div><div>\u20845 </div>\
-                            </div>\
-                            <div class="grid grid-cols-7 gap-1.5 text-center">\
-                                $\{calendarDays.map((day, i) => \{\
-                                    if (day === null) return `<div class="aspect-square"></div>`;\
-                                    const dKey = `2026-$\{String(currentMonth + 1).padStart(2, '0')\}-$\{String(day).padStart(2, '0')\}`;\
-                                    const rate = calculateRate(dKey);\
-                                    const isWeekend = (i % 7 === 0 || i % 7 === 6);\
-                                    const weekendClass = isWeekend ? 'bg-blue-100/60' : 'bg-white';\
-                                    return `\
-                                        <button onclick="setView('details', new Date(2026, $\{currentMonth\}, $\{day\}))" \
-                                                class="calendar-day-btn rounded-xl border border-blue-50 hover:bg-blue-50 transition-all active:scale-90 shadow-sm $\{weekendClass\}">\
-                                            <span class="text-xs font-black $\{isWeekend ? 'text-blue-700' : 'text-slate-600'\}">$\{day\}</span>\
-                                            $\{rate > 0 ? `<div class="w-1.5 h-1.5 rounded-full mt-1 $\{rate === 100 ? 'bg-green-500' : 'bg-orange-500'\}"></div>` : ''\}\
-                                        </button>\
-                                    `;\
-                                \}).join('')\}\
-                            </div>\
-                        </div>\
-                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 transition-all active:scale-95 uppercase tracking-wider">\
-                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> \uc0\u21295 \u20986 \u24033 \u27298  Excel \u22577 \u34920 \
-                        </button>\
-                    </div>\
-                `;\
-            \} else if (view === 'details') \{\
-                const rate = calculateRate(currentKey);\
-                const saveTime = lastSaveTimes[currentKey] || "";\
-                html += `\
-                    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left">\
-                        $\{saveStatus ? '<div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex items-center justify-center font-bold text-blue-600">\uc0\u38642 \u31471 \u23384 \u27284 \u20013 ...</div>' : ''\}\
-                        \
-                        <div class="bg-blue-600 p-5 text-white">\
-                            <div class="flex justify-between items-center mb-5 gap-4">\
-                                <!-- \uc0\u19978 \u24038 : \u26085 \u26399  -->\
-                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner">\
-                                    <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>\
-                                    <span class="text-sm font-bold truncate">$\{currentKey\}</span>\
-                                </div>\
-                                <!-- \uc0\u19978 \u21491 : \u24033 \u27298 \u20154 \u21729  -->\
-                                <div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white">\
-                                    <i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"></i>\
-                                    <input type="text" placeholder="\uc0\u22995 \u21517 " value="$\{inspectors[currentKey] || ""\}" onchange="updateInspector('$\{currentKey\}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">\
-                                </div>\
-                            </div>\
-                            <div class="flex justify-between items-end">\
-                                <!-- \uc0\u19979 \u24038 : \u36914 \u24230  + \u24555 \u25463 \u20786 \u23384 \u25353 \u37397  -->\
-                                <div class="flex items-center gap-2">\
-                                    <div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg">\uc0\u36914 \u24230 : $\{rate\}%</div>\
-                                    <button onclick="saveData()" class="bg-blue-500 hover:bg-blue-400 text-white p-1.5 rounded-xl shadow-md active:scale-95 transition-all">\
-                                        <i data-lucide="save" class="w-3.5 h-3.5"></i>\
-                                    </button>\
-                                </div>\
-                                <!-- \uc0\u19979 \u21491 : \u23384 \u27284 \u26178 \u38291  -->\
-                                <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">\
-                                    <i data-lucide="clock" class="w-2.5 h-2.5"></i> $\{saveTime ? saveTime : '\uc0\u23578 \u26410 \u23384 \u27284 '\}\
-                                </div>\
-                            </div>\
-                        </div>\
-\
-                        <div class="overflow-x-auto no-scrollbar">\
-                            <table class="w-full table-fixed border-collapse">\
-                                <thead class="bg-blue-50 text-blue-900 uppercase font-black tracking-tighter border-b border-blue-100">\
-                                    <tr>\
-                                        <th class="px-1 py-4 text-center w-12 text-[13px]">\uc0\u29376 \u24907 </th>\
-                                        <th class="px-2 py-4 w-[25%] text-center border-r border-blue-100 text-[13px]">\uc0\u21312 \u22495 </th>\
-                                        <th class="px-3 py-4 text-[13px] text-center">\uc0\u20633 \u35387  (\u32570 \u22833 \u22635 \u23531 )</th>\
-                                        <th class="w-8"></th>\
-                                    </tr>\
-                                </thead>\
-                                <tbody class="divide-y divide-blue-50 text-slate-800">\
-                                    $\{locations.map(loc => \{\
-                                        const data = inspectionData[currentKey]?.[loc] || \{ checked: false, remark: "" \};\
-                                        const area = splitArea(loc);\
-                                        return `\
-                                            <tr class="hover:bg-blue-50/30">\
-                                                <td class="py-5 text-center">\
-                                                    <button onclick="toggleCheck('$\{loc\}')" class="$\{data.checked ? 'text-green-500' : 'text-slate-200'\} transition-all active:scale-75">\
-                                                        $\{data.checked ? '<i data-lucide="check-circle" class="w-[30px] h-[30px] mx-auto"></i>' : '<i data-lucide="circle" class="w-[30px] h-[30px] mx-auto"></i>'\}\
-                                                    </button>\
-                                                </td>\
-                                                <td class="border-r border-blue-50 text-center px-1">\
-                                                    <button onclick="showGuide('$\{loc\}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[12px] leading-tight justify-center w-full">\
-                                                        $\{area.name\} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200 shrink-0"></i>\
-                                                    </button>\
-                                                </td>\
-                                                <td class="px-2">\
-                                                    <input type="text" value="$\{data.remark || ""\}" onblur="updateRemark('$\{loc\}', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]">\
-                                                </td>\
-                                                <td class="text-center">\
-                                                    <button onclick="removeLocation('$\{loc\}')" class="text-slate-100 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>\
-                                                </td>\
-                                            </tr>\
-                                        `;\
-                                    \}).join('')\}\
-                                </tbody>\
-                            </table>\
-                        </div>\
-\
-                        <div class="p-4 space-y-4">\
-                            $\{!showAddSelect ? `\
-                                <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold">+ \uc0\u26032 \u22686 \u21312 \u22495 </button>\
-                            ` : `\
-                                <div class="flex gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 animate-in text-blue-900">\
-                                    <select id="newLocSelect" class="flex-1 bg-white border border-blue-100 rounded-lg px-2 text-[12px] font-bold outline-none">\
-                                        $\{guideItems.map(item => `<option value="$\{item\}">$\{item\}</option>`).join('')\}\
-                                    </select>\
-                                    <button onclick="addLocation()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">\uc0\u21152 \u20837 </button>\
-                                    <button onclick="toggleAdd(false)" class="p-2 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>\
-                                </div>\
-                            `\}\
-                            <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest">\
-                                <i data-lucide="save" class="w-5 h-5"></i> \uc0\u23384 \u27284 \
-                            </button>\
-                        </div>\
-                    </div>\
-                `;\
-            \}\
-\
-            // --- \uc0\u24213 \u37096 \u23566 \u35261 \u21015  (\u31934 \u31777 \u29256 ) ---\
-            html += `\
-                <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50">\
-                    <button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all $\{view === 'home' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'\}">\
-                        <i data-lucide="home" class="w-4 h-4"></i><span class="text-[10px] font-black">\uc0\u39318 \u38913 </span>\
-                    </button>\
-                    <div class="w-px h-6 bg-slate-100 mx-1"></div>\
-                    <button onclick="setView('calendar')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all $\{view === 'calendar' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'\}">\
-                        <i data-lucide="layout-grid" class="w-4 h-4"></i><span class="text-[10px] font-black">\uc0\u26085 \u26310 </span>\
-                    </button>\
-                </nav>\
-            `;\
-\
-            root.innerHTML = html;\
-            lucide.createIcons();\
-        \}\
-\
-        // --- \uc0\u26680 \u24515 \u37007 \u36655 \u65306 Excel \u22577 \u34920  ---\
-        window.handleExport = () => \{\
-            const wb = XLSX.utils.book_new();\
-            const start = new Date(state.exportRange.start);\
-            const end = new Date(state.exportRange.end);\
-            \
-            const monthsMap = \{\};\
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) \{\
-                const monthName = `$\{d.getFullYear()\}\uc0\u24180 $\{d.getMonth() + 1\}\u26376 `;\
-                if (!monthsMap[monthName]) monthsMap[monthName] = [];\
-                monthsMap[monthName].push(new Date(d));\
-            \}\
-\
-            Object.entries(monthsMap).forEach(([sheetName, days]) => \{\
-                const aoa = [];\
-                const row1 = ["\uc0\u26007 \u20845 \u24288 \u24033 \u27298 \u34920 ", ""];\
-                days.forEach(day => \{\
-                    const k = getDateKey(day);\
-                    row1.push(`$\{day.getDate()\}\uc0\u34399 `, state.inspectors[k] || "");\
-                \});\
-                aoa.push(row1);\
-                aoa.push([]);\
-\
-                const row3 = ["\uc0\u21312 \u22495 \u32232 \u34399 ", "\u21312 \u22495 \u21517 \u31281 "];\
-                days.forEach(() => row3.push("\uc0\u29376 \u24907 ", "\u20633 \u35387 "));\
-                aoa.push(row3);\
-\
-                state.locations.forEach(loc => \{\
-                    const area = splitArea(loc);\
-                    const rowData = [area.id, area.name];\
-                    days.forEach(day => \{\
-                        const k = getDateKey(day);\
-                        const record = state.inspectionData[k]?.[loc] || \{ checked: false, remark: "" \};\
-                        rowData.push(record.checked ? "V" : "", record.remark || "");\
-                    \});\
-                    aoa.push(rowData);\
-                \});\
-\
-                const ws = XLSX.utils.aoa_to_sheet(aoa);\
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);\
-            \});\
-\
-            XLSX.writeFile(wb, `\uc0\u26007 \u20845 \u24288 \u24033 \u27298 \u22577 \u34920 _$\{state.exportRange.start\}_\u33267 _$\{state.exportRange.end\}.xlsx`);\
-            window.toggleExport(false);\
-        \};\
-\
-        // --- \uc0\u20114 \u21205 \u21151 \u33021  ---\
-        window.setView = (v, d) => \{ state.view = v; if (d) \{ state.selectedDate = d; state.currentMonth = d.getMonth(); \} render(); \};\
-        window.changeMonth = (delta) => \{ let next = state.currentMonth + delta; if (next < 0) next = 11; if (next > 11) next = 0; state.currentMonth = next; render(); \};\
-        window.toggleCheck = (loc) => \{ const k = getDateKey(state.selectedDate); if (!state.inspectionData[k]) state.inspectionData[k] = \{\}; if (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = \{ checked: false, remark: "" \}; state.inspectionData[k][loc].checked = !state.inspectionData[k][loc].checked; render(); \};\
-        window.updateRemark = (loc, val) => \{ const k = getDateKey(state.selectedDate); if (!state.inspectionData[k]) state.inspectionData[k] = \{\}; if (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = \{ checked: false, remark: "" \}; state.inspectionData[k][loc].remark = val; render(); \};\
-        window.updateInspector = (k, name) => \{ state.inspectors[k] = name; \};\
-        window.showGuide = (item) => \{ state.activeGuide = item; render(); \};\
-        window.toggleAdd = (show) => \{ state.showAddSelect = show; render(); \};\
-        window.toggleExport = (show) => \{ state.isExporting = show; render(); \};\
-        window.updateExportRange = (type, val) => \{ state.exportRange[type] = val; \};\
-\
-        window.addLocation = () => \{\
-            const select = document.getElementById('newLocSelect');\
-            const val = select.value;\
-            if (!state.locations.includes(val)) \{ \
-                state.locations.push(val); \
-                state.locations.sort((a, b) => \{\
-                    const idA = parseInt(a.match(/\\d+/) || 999);\
-                    const idB = parseInt(b.match(/\\d+/) || 999);\
-                    return idA - idB;\
-                \});\
-            \}\
-            state.showAddSelect = false;\
-            render();\
-        \};\
-\
-        window.removeLocation = (loc) => \{ state.locations = state.locations.filter(l => l !== loc); render(); \};\
-        \
-        window.saveData = async () => \{\
-            state.saveStatus = true; render();\
-            const now = new Date();\
-            const timeStr = `$\{now.getFullYear()\}/$\{now.getMonth() + 1\}/$\{now.getDate()\} $\{String(now.getHours()).padStart(2, '0')\}:$\{String(now.getMinutes()).padStart(2, '0')\}`;\
-            const key = getDateKey(state.selectedDate);\
-\
-            // --- \uc0\u38642 \u31471 \u20786 \u23384 \u37007 \u36655  ---\
-            if (state.user) \{\
-                try \{\
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);\
-                    await setDoc(docRef, \{\
-                        records: state.inspectionData[key] || \{\},\
-                        inspector: state.inspectors[key] || "",\
-                        saveTime: timeStr,\
-                        locations: state.locations // \uc0\u21516 \u27493 \u20786 \u23384 \u30446 \u21069 \u24033 \u27298 \u38917 \u30446 \u28165 \u21934 \
-                    \}, \{ merge: true \});\
-                \} catch (e) \{ console.error("\uc0\u38642 \u31471 \u23384 \u27284 \u22833 \u25943 :", e); \}\
-            \}\
-            state.lastSaveTimes[key] = timeStr;\
-            setTimeout(() => \{ state.saveStatus = false; window.setView('home'); \}, 1000);\
-        \};\
-\
-        // --- \uc0\u21021 \u22987 \u21270  & \u38642 \u31471 \u36899 \u21205  ---\
-        const initApp = async () => \{\
-            try \{\
-                await signInAnonymously(auth);\
-                onAuthStateChanged(auth, (user) => \{\
-                    state.user = user;\
-                    if (user) \{\
-                        const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');\
-                        onSnapshot(dataRef, (snapshot) => \{\
-                            snapshot.forEach(doc => \{\
-                                const d = doc.data();\
-                                state.inspectionData[doc.id] = d.records || \{\};\
-                                state.inspectors[doc.id] = d.inspector || "";\
-                                state.lastSaveTimes[doc.id] = d.saveTime || "";\
-                                // \uc0\u22914 \u26524 \u38642 \u31471 \u26377 \u20786 \u23384 \u36942 \u38917 \u30446 \u28165 \u21934 \u65292 \u21063 \u20197 \u38642 \u31471 \u28858 \u28310 \
-                                if (d.locations && d.locations.length > 0) \{\
-                                    state.locations = d.locations;\
-                                \}\
-                            \});\
-                            render();\
-                        \});\
-                    \}\
-                \});\
-            \} catch (e) \{\
-                console.warn("Firebase \uc0\u36899 \u32218 \u22833 \u25943 \u65292 \u25913 \u28858 \u26412 \u22320 \u25805 \u20316 \u27169 \u24335 :", e);\
-                render();\
-            \}\
-        \};\
-\
-        initApp(); render();\
-    </script>\
-</body>\
-</html>}
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.2">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #6d6d6d; -webkit-text-stroke: #6d6d6d}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #0000ff; -webkit-text-stroke: #0000ff}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #6b0001; -webkit-text-stroke: #6b0001}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #fb0007; -webkit-text-stroke: #fb0007}
+    p.p5 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; -webkit-text-stroke: #000000}
+    p.p6 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #4d5055; -webkit-text-stroke: #4d5055}
+    p.p7 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; -webkit-text-stroke: #000000; min-height: 16.0px}
+    p.p8 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #18702b; -webkit-text-stroke: #18702b}
+    p.p9 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #18702b; -webkit-text-stroke: #18702b; min-height: 16.0px}
+    span.s1 {font-kerning: none; background-color: #ecf1f7}
+    span.s2 {font-kerning: none; color: #fb0007; background-color: #ecf1f7; -webkit-text-stroke: 0px #fb0007}
+    span.s3 {font-kerning: none; color: #2a2a2a; background-color: #ecf1f7; -webkit-text-stroke: 0px #2a2a2a}
+    span.s4 {font-kerning: none; color: #6b0001; background-color: #ecf1f7; -webkit-text-stroke: 0px #6b0001}
+    span.s5 {font-kerning: none; color: #000000; background-color: #ecf1f7; -webkit-text-stroke: 0px #000000}
+    span.s6 {font-kerning: none; color: #0000ff; background-color: #ecf1f7; -webkit-text-stroke: 0px #0000ff}
+    span.s7 {font-kerning: none; color: #18702b; background-color: #ecf1f7; -webkit-text-stroke: 0px #18702b}
+    span.s8 {font-kerning: none; color: #093c94; background-color: #ecf1f7; -webkit-text-stroke: 0px #093c94}
+    span.s9 {font-kerning: none; color: #137646; background-color: #ecf1f7; -webkit-text-stroke: 0px #137646}
+    span.s10 {font-kerning: none; color: #6f0ec3; background-color: #ecf1f7; -webkit-text-stroke: 0px #6f0ec3}
+    span.s11 {font-kerning: none; color: #4d5055; background-color: #ecf1f7; -webkit-text-stroke: 0px #4d5055}
+    span.s12 {font-kerning: none}
+    span.s13 {font-kerning: none; color: #0e6e6d; background-color: #ecf1f7; -webkit-text-stroke: 0px #0e6e6d}
+    span.s14 {font-kerning: none; color: #a4450b; background-color: #ecf1f7; -webkit-text-stroke: 0px #a4450b}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1">&lt;!DOCTYPE</span><span class="s2"> html</span><span class="s1">&gt;</span></p>
+<p class="p2"><span class="s3">&lt;</span><span class="s4">html</span><span class="s5"> </span><span class="s2">lang</span><span class="s3">=</span><span class="s1">"zh-TW"</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s3">&lt;</span><span class="s1">head</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">meta</span><span class="s5"> </span><span class="s1">charset</span><span class="s3">=</span><span class="s6">"UTF-8"</span><span class="s3">&gt;</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">meta</span><span class="s5"> </span><span class="s2">name</span><span class="s3">=</span><span class="s1">"viewport"</span><span class="s5"> </span><span class="s2">content</span><span class="s3">=</span><span class="s1">"width=device-width, initial-scale=1.0"</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">title</span><span class="s3">&gt;</span><span class="s1">斗六廠 2026 環境巡檢系統</span><span class="s3">&lt;/</span><span class="s4">title</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;!-- Tailwind CSS --&gt;</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">script</span><span class="s5"> </span><span class="s2">src</span><span class="s3">=</span><span class="s1">"https://cdn.tailwindcss.com"</span><span class="s3">&gt;&lt;/</span><span class="s4">script</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;!-- Lucide Icons --&gt;</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">script</span><span class="s5"> </span><span class="s2">src</span><span class="s3">=</span><span class="s1">"https://unpkg.com/lucide@latest"</span><span class="s3">&gt;&lt;/</span><span class="s4">script</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;!-- SheetJS 用于生成真正的 Excel 檔案 --&gt;</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">script</span><span class="s5"> </span><span class="s2">src</span><span class="s3">=</span><span class="s1">"https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"</span><span class="s3">&gt;&lt;/</span><span class="s4">script</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;!-- Google Fonts --&gt;</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">link</span><span class="s5"> </span><span class="s2">href</span><span class="s3">=</span><span class="s1">"https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&amp;display=swap"</span><span class="s5"> </span><span class="s2">rel</span><span class="s3">=</span><span class="s1">"stylesheet"</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s1">style</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s4">body</span><span class="s5"> { </span><span class="s1">font-family:</span><span class="s5"> </span><span class="s7">'Noto Sans TC'</span><span class="s5">, </span><span class="s8">sans-serif</span><span class="s5">; </span><span class="s1">-webkit-tap-highlight-color:</span><span class="s5"> </span><span class="s8">transparent</span><span class="s5">; }</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s4">.animate-in</span><span class="s1"> { </span><span class="s2">animation:</span><span class="s1"> </span><span class="s8">fadeIn</span><span class="s1"> </span><span class="s9">0.3s</span><span class="s1"> </span><span class="s8">ease-out</span><span class="s1">; }</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s10">@keyframes</span><span class="s5"> </span><span class="s8">fadeIn</span><span class="s5"> { </span><span class="s8">from</span><span class="s5"> { </span><span class="s1">opacity:</span><span class="s5"> </span><span class="s9">0</span><span class="s5">; </span><span class="s1">transform:</span><span class="s5"> </span><span class="s8">translateY(</span><span class="s9">10px</span><span class="s8">)</span><span class="s5">; } </span><span class="s8">to</span><span class="s5"> { </span><span class="s1">opacity:</span><span class="s5"> </span><span class="s9">1</span><span class="s5">; </span><span class="s1">transform:</span><span class="s5"> </span><span class="s8">translateY(</span><span class="s9">0</span><span class="s8">)</span><span class="s5">; } }</span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">.no-scrollbar::-webkit-scrollbar</span><span class="s5"> { </span><span class="s2">display:</span><span class="s5"> </span><span class="s8">none</span><span class="s5">; }</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s4">.no-scrollbar</span><span class="s5"> { </span><span class="s1">-ms-overflow-style:</span><span class="s5"> </span><span class="s8">none</span><span class="s5">; </span><span class="s1">scrollbar-width:</span><span class="s5"> </span><span class="s8">none</span><span class="s5">; }</span></p>
+<p class="p7"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">.remark-input</span><span class="s5"> {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">color:</span><span class="s1"> </span><span class="s8">#dc2626</span><span class="s1">; </span><span class="s11">/* red-600 */</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">font-weight:</span><span class="s1"> </span><span class="s9">700</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">text-align:</span><span class="s1"> </span><span class="s8">center</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">.calendar-day-btn</span><span class="s5"> {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">aspect-ratio:</span><span class="s1"> </span><span class="s9">1</span><span class="s1"> / </span><span class="s9">1</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">display:</span><span class="s1"> </span><span class="s8">flex</span><span class="s1">;</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">flex-direction:</span><span class="s5"> </span><span class="s8">column</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s2">align-items:</span><span class="s1"> </span><span class="s8">center</span><span class="s1">;</span></p>
+<p class="p4"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">justify-content:</span><span class="s5"> </span><span class="s8">center</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s1">style</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s3">&lt;/</span><span class="s1">head</span><span class="s3">&gt;</span></p>
+<p class="p2"><span class="s3">&lt;</span><span class="s4">body</span><span class="s5"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"bg-blue-50 text-slate-800 pb-28 text-center"</span><span class="s3">&gt;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">div</span><span class="s5"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"root"</span><span class="s5"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"max-w-2xl mx-auto px-4 py-8"</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">&lt;!-- 內容由 JavaScript 動態渲染 --&gt;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s4">div</span><span class="s3">&gt;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s4">script</span><span class="s5"> </span><span class="s2">type</span><span class="s3">=</span><span class="s1">"module"</span><span class="s3">&gt;</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s10">import</span><span class="s5"> { initializeApp } </span><span class="s10">from</span><span class="s5"> </span><span class="s1">"https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js"</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">import</span><span class="s1"> { getAuth, signInAnonymously, onAuthStateChanged } </span><span class="s10">from</span><span class="s1"> </span><span class="s7">"https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js"</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">import</span><span class="s1"> { getFirestore, doc, setDoc, onSnapshot, collection } </span><span class="s10">from</span><span class="s1"> </span><span class="s7">"https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js"</span><span class="s1">;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// ==========================================</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// 1. Firebase 金鑰配置 (已啟動雲端連動)</span></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// ==========================================</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> firebaseConfig = {<span class="Apple-converted-space"> </span></span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span>apiKey: </span><span class="s1">"AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c"</span><span class="s5">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span>authDomain: </span><span class="s1">"douliu-factory-2026.firebaseapp.com"</span><span class="s5">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>projectId: </span><span class="s7">"douliu-factory-2026"</span><span class="s1">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span>storageBucket: </span><span class="s1">"douliu-factory-2026.appspot.com"</span><span class="s5">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>messagingSenderId: </span><span class="s7">"782947103842"</span><span class="s1">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span>appId: </span><span class="s1">"1:782947103842:web:9f8e7d6c5b4a3f21"</span><span class="s5"><span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> app = initializeApp(firebaseConfig);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> auth = getAuth(app);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> db = getFirestore(app);</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s5"> appId = </span><span class="s1">"douliu-factory-2026"</span><span class="s5">;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 全域狀態 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.state = {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>view: </span><span class="s7">'home'</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>selectedDate: </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(</span><span class="s14">2026</span><span class="s1">, </span><span class="s14">0</span><span class="s1">, </span><span class="s14">4</span><span class="s1">),</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>currentMonth: </span><span class="s14">0</span><span class="s1">,<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>user: </span><span class="s10">null</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>inspectionData: {},</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>inspectors: {},</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>lastSaveTimes: {},</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>locations: [],<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>activeGuide: </span><span class="s10">null</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>showAddSelect: </span><span class="s10">false</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>isExporting: </span><span class="s10">false</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>saveStatus: </span><span class="s10">false</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>exportRange: { start: </span><span class="s7">"2026-01-01"</span><span class="s1">, end: </span><span class="s7">"2026-01-31"</span><span class="s1"> }</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> guideItems = [</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"01館外週邊"</span><span class="s5">, </span><span class="s1">"02櫃台接待"</span><span class="s5">, </span><span class="s1">"03營運辦公室"</span><span class="s5">, </span><span class="s1">"04商品區"</span><span class="s5">, </span><span class="s1">"05會員休息區"</span><span class="s5">, </span><span class="s1">"06會務部"</span><span class="s5">, </span><span class="s1">"07教練部"</span><span class="s5">, </span><span class="s1">"08心肺訓練區"</span><span class="s5">,</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"09重訓器械訓練區"</span><span class="s5">, </span><span class="s1">"10私人教練訓練區"</span><span class="s5">, </span><span class="s1">"11男更衣室(含廁所)"</span><span class="s5">, </span><span class="s1">"12女更衣室(含廁所)"</span><span class="s5">, </span><span class="s1">"13男更淋浴間"</span><span class="s5">, </span><span class="s1">"14女更淋浴間"</span><span class="s5">, </span><span class="s1">"15安全設備"</span><span class="s5">, </span><span class="s1">"16全館公共空間"</span><span class="s5">,</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"17員工休息室"</span><span class="s5">, </span><span class="s1">"18工務室"</span><span class="s5">, </span><span class="s1">"19工務倉庫機房"</span><span class="s5">, </span><span class="s1">"20員工"</span><span class="s5">, </span><span class="s1">"21*智能販售區"</span><span class="s5">, </span><span class="s1">"22*專業拳擊訓練區"</span><span class="s5">, </span><span class="s1">"23*女性訓練區"</span><span class="s5">, </span><span class="s1">"24*PU跑道"</span><span class="s5">,</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"25*道館"</span><span class="s5">, </span><span class="s1">"26*攀岩區"</span><span class="s5">, </span><span class="s1">"27*飛輪教室"</span><span class="s5">, </span><span class="s1">"28*有氧教室"</span><span class="s5">, </span><span class="s1">"29*壁球室"</span><span class="s5">, </span><span class="s1">"30*桌球室"</span><span class="s5">, </span><span class="s1">"31*籃球場"</span><span class="s5">, </span><span class="s1">"32*撞球室"</span><span class="s5">,</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"33*電動遊戲區"</span><span class="s5">, </span><span class="s1">"34*兒童館"</span><span class="s5">, </span><span class="s1">"35*游泳池"</span><span class="s5">, </span><span class="s1">"36*男三溫暖"</span><span class="s5">, </span><span class="s1">"37*女三溫暖"</span><span class="s5">, </span><span class="s1">"38*男蒸氣烤箱"</span><span class="s5">, </span><span class="s1">"39*女蒸氣烤箱"</span><span class="s5">, </span><span class="s1">"40*男公共廁所"</span><span class="s5">,</span></p>
+<p class="p8"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">"41*女公共廁所"</span><span class="s5">, </span><span class="s1">"42*殘障公共廁所"</span><span class="s5">, </span><span class="s1">"43*公共置物櫃"</span><span class="s5">, </span><span class="s1">"44*人體工房"</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>];</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// 預設僅顯示前 20 項</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>state.locations = guideItems.slice(</span><span class="s14">0</span><span class="s1">, </span><span class="s14">20</span><span class="s1">);</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 工具函式 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> getDateKey = (date) =&gt; </span><span class="s7">`</span><span class="s1">${date.getFullYear()}</span><span class="s7">-</span><span class="s1">${</span><span class="s13">String</span><span class="s1">(date.getMonth() + </span><span class="s14">1</span><span class="s1">).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">-</span><span class="s1">${</span><span class="s13">String</span><span class="s1">(date.getDate()).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">`</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> cleanAreaName = (name) =&gt; name.replace(</span><span class="s4">/^[0-9]+[*]?/</span><span class="s1">, </span><span class="s7">""</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> splitArea = (name) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> match = name.match(</span><span class="s4">/^([0-9]+[*]?)(.*)$/</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">return</span><span class="s1"> match ? { id: match[</span><span class="s14">1</span><span class="s1">], name: match[</span><span class="s14">2</span><span class="s1">] } : { id: </span><span class="s7">""</span><span class="s1">, name: name };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.calculateRate = (dateKey) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> dayData = state.inspectionData[dateKey];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">if</span><span class="s1"> (!dayData || state.locations.length === </span><span class="s14">0</span><span class="s1">) </span><span class="s10">return</span><span class="s1"> </span><span class="s14">0</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> checkedCount = state.locations.filter(loc =&gt; dayData[loc]?.checked).length;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">return</span><span class="s1"> </span><span class="s13">Math</span><span class="s1">.round((checkedCount / state.locations.length) * </span><span class="s14">100</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">function</span><span class="s1"> generateCalendarDays(month) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> year = </span><span class="s14">2026</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> firstDay = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(year, month, </span><span class="s14">1</span><span class="s1">).getDay();<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> daysInMonth = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(year, month + </span><span class="s14">1</span><span class="s1">, </span><span class="s14">0</span><span class="s1">).getDate();<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> days = [];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">for</span><span class="s1"> (</span><span class="s10">let</span><span class="s1"> i = </span><span class="s14">0</span><span class="s1">; i &lt; firstDay; i++) days.push(</span><span class="s10">null</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">for</span><span class="s1"> (</span><span class="s10">let</span><span class="s1"> d = </span><span class="s14">1</span><span class="s1">; d &lt;= daysInMonth; d++) days.push(d);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">return</span><span class="s1"> days;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 核心渲染 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.render = () =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> root = document.getElementById(</span><span class="s7">'root'</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus } = state;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> currentKey = getDateKey(selectedDate);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> todayKey = getDateKey(</span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(</span><span class="s14">2026</span><span class="s1">, </span><span class="s14">0</span><span class="s1">, </span><span class="s14">4</span><span class="s1">));</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">let</span><span class="s1"> html = </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>&lt;header class="flex justify-between items-center mb-6 px-1"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;h1 class="text-2xl font-black text-blue-900 tracking-tighter"&gt;斗六廠環境巡檢&lt;/h1&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="bg-blue-500 px-3 py-1.5 rounded-xl text-[10px] font-black text-white shadow-lg uppercase tracking-wider"&gt;2026 Admin&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/header&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">            </span>`</span><span class="s5">;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">if</span><span class="s1"> (view === </span><span class="s7">'home'</span><span class="s1">) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> rate = calculateRate(todayKey);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>html += </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="space-y-4 animate-in text-left"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"&gt;&lt;i data-lucide="wind" class="w-24 h-24"&gt;&lt;/i&gt;&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="z-10"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;p class="text-blue-500 font-bold text-xs uppercase tracking-widest text-left"&gt;Today's Goal&lt;/p&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;p class="text-2xl font-black text-blue-900"&gt;</span><span class="s5">${todayKey}</span><span class="s1">&lt;/p&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;button onclick="setView('details', new Date(2026,0,4))" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"&gt;執行巡檢&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="relative w-20 h-20 z-10 flex items-center justify-center"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;svg class="w-20 h-20 transform -rotate-90"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" class="text-slate-50" /&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="</span><span class="s5">${</span><span class="s14">213.63</span><span class="s5"> - (</span><span class="s14">213.63</span><span class="s5"> * rate) / </span><span class="s14">100</span><span class="s5">}</span><span class="s1">" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" /&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/svg&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;span class="absolute text-lg font-black text-blue-900"&gt;</span><span class="s5">${rate}</span><span class="s1">%&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/section&gt;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="flex items-center gap-2 mb-3 px-1 text-blue-900"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;i data-lucide="info" class="text-blue-600 w-4 h-4"&gt;&lt;/i&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;h3 class="font-black text-blue-900 text-sm"&gt;區域指南&lt;/h3&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="grid grid-cols-3 gap-1.5 text-center"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span></span><span class="s5">${guideItems.map(item =&gt; </span><span class="s1">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;button onclick="showGuide('</span><span class="s5">${item}</span><span class="s1">')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;span class="text-[11px] font-bold text-blue-800 leading-tight w-full text-center px-0.5"&gt;</span><span class="s5">${item}</span><span class="s1">&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>`</span><span class="s5">).join(</span><span class="s1">''</span><span class="s5">)}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/section&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>`</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>} </span><span class="s10">else</span><span class="s1"> </span><span class="s10">if</span><span class="s1"> (view === </span><span class="s7">'calendar'</span><span class="s1">) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> months = [</span><span class="s7">"1月"</span><span class="s1">, </span><span class="s7">"2月"</span><span class="s1">, </span><span class="s7">"3月"</span><span class="s1">, </span><span class="s7">"4月"</span><span class="s1">, </span><span class="s7">"5月"</span><span class="s1">, </span><span class="s7">"6月"</span><span class="s1">, </span><span class="s7">"7月"</span><span class="s1">, </span><span class="s7">"8月"</span><span class="s1">, </span><span class="s7">"9月"</span><span class="s1">, </span><span class="s7">"10月"</span><span class="s1">, </span><span class="s7">"11月"</span><span class="s1">, </span><span class="s7">"12月"</span><span class="s1">];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> calendarDays = generateCalendarDays(currentMonth);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>html += </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="flex flex-col items-center animate-in"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6 text-blue-900"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="flex justify-between items-center mb-6 px-1"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"&gt;&lt;i data-lucide="chevron-left"&gt;&lt;/i&gt;&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;h3 class="text-xl font-black text-blue-900 tracking-tight"&gt;2026年 </span><span class="s5">${months[currentMonth]}</span><span class="s1">&lt;/h3&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;button onclick="changeMonth(1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90"&gt;&lt;i data-lucide="chevron-right"&gt;&lt;/i&gt;&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="grid grid-cols-7 gap-1 mb-3 text-center text-[10px] font-black text-slate-300 uppercase"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div&gt;日&lt;/div&gt;&lt;div&gt;一&lt;/div&gt;&lt;div&gt;二&lt;/div&gt;&lt;div&gt;三&lt;/div&gt;&lt;div&gt;四&lt;/div&gt;&lt;div&gt;五&lt;/div&gt;&lt;div&gt;六&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="grid grid-cols-7 gap-1.5 text-center"&gt;</span></p>
+<p class="p5"><span class="s7"><span class="Apple-converted-space">                                </span></span><span class="s1">${calendarDays.map((day, i) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">if</span><span class="s1"> (day === </span><span class="s10">null</span><span class="s1">) </span><span class="s10">return</span><span class="s1"> </span><span class="s7">`&lt;div class="aspect-square"&gt;&lt;/div&gt;`</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">const</span><span class="s1"> dKey = </span><span class="s7">`2026-</span><span class="s1">${</span><span class="s13">String</span><span class="s1">(currentMonth + </span><span class="s14">1</span><span class="s1">).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">-</span><span class="s1">${</span><span class="s13">String</span><span class="s1">(day).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">`</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">const</span><span class="s1"> rate = calculateRate(dKey);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">const</span><span class="s1"> isWeekend = (i % </span><span class="s14">7</span><span class="s1"> === </span><span class="s14">0</span><span class="s1"> || i % </span><span class="s14">7</span><span class="s1"> === </span><span class="s14">6</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">const</span><span class="s1"> weekendClass = isWeekend ? </span><span class="s7">'bg-blue-100/60'</span><span class="s1"> : </span><span class="s7">'bg-white'</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s10">return</span><span class="s1"> </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;button onclick="setView('details', new Date(2026, </span><span class="s5">${currentMonth}</span><span class="s1">, </span><span class="s5">${day}</span><span class="s1">))"<span class="Apple-converted-space"> </span></span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>class="calendar-day-btn rounded-xl border border-blue-50 hover:bg-blue-50 transition-all active:scale-90 shadow-sm </span><span class="s5">${weekendClass}</span><span class="s1">"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                            </span>&lt;span class="text-xs font-black </span><span class="s5">${isWeekend ? </span><span class="s1">'text-blue-700'</span><span class="s5"> : </span><span class="s1">'text-slate-600'</span><span class="s5">}</span><span class="s1">"&gt;</span><span class="s5">${day}</span><span class="s1">&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                            </span></span><span class="s5">${rate &gt; </span><span class="s14">0</span><span class="s5"> ? </span><span class="s1">`&lt;div class="w-1.5 h-1.5 rounded-full mt-1 </span><span class="s5">${rate === </span><span class="s14">100</span><span class="s5"> ? </span><span class="s1">'bg-green-500'</span><span class="s5"> : </span><span class="s1">'bg-orange-500'</span><span class="s5">}</span><span class="s1">"&gt;&lt;/div&gt;`</span><span class="s5"> : </span><span class="s1">''</span><span class="s5">}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>`</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span>}).join(</span><span class="s7">''</span><span class="s1">)}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 transition-all active:scale-95 uppercase tracking-wider"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"&gt;&lt;/i&gt; 匯出巡檢 Excel 報表</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>`</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>} </span><span class="s10">else</span><span class="s1"> </span><span class="s10">if</span><span class="s1"> (view === </span><span class="s7">'details'</span><span class="s1">) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> rate = calculateRate(currentKey);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> saveTime = lastSaveTimes[currentKey] || </span><span class="s7">""</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>html += </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span></span><span class="s5">${saveStatus ? </span><span class="s1">'&lt;div class="absolute inset-0 z-[110] bg-white/80 backdrop-blur-sm flex items-center justify-center font-bold text-blue-600"&gt;雲端存檔中...&lt;/div&gt;'</span><span class="s5"> : </span><span class="s1">''</span><span class="s5">}</span></p>
+<p class="p9"><span class="s1"><span class="Apple-converted-space">                        </span></span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div class="bg-blue-600 p-5 text-white"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="flex justify-between items-center mb-5 gap-4"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;!-- 上左: 日期 --&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"&gt;&lt;/i&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;span class="text-sm font-bold truncate"&gt;</span><span class="s5">${currentKey}</span><span class="s1">&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;!-- 上右: 巡檢人員 --&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"&gt;&lt;/i&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;input type="text" placeholder="姓名" value="</span><span class="s5">${inspectors[currentKey] || </span><span class="s1">""</span><span class="s5">}</span><span class="s1">" onchange="updateInspector('</span><span class="s5">${currentKey}</span><span class="s1">', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;div class="flex justify-between items-end"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;!-- 下左: 進度 + 快捷儲存按鈕 --&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div class="flex items-center gap-2"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;div class="bg-white text-blue-600 px-4 py-1.5 rounded-2xl text-xs font-black shadow-lg"&gt;進度: </span><span class="s5">${rate}</span><span class="s1">%&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;button onclick="saveData()" class="bg-blue-500 hover:bg-blue-400 text-white p-1.5 rounded-xl shadow-md active:scale-95 transition-all"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;i data-lucide="save" class="w-3.5 h-3.5"&gt;&lt;/i&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;!-- 下右: 存檔時間 --&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;i data-lucide="clock" class="w-2.5 h-2.5"&gt;&lt;/i&gt; </span><span class="s5">${saveTime ? saveTime : </span><span class="s1">'尚未存檔'</span><span class="s5">}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div class="overflow-x-auto no-scrollbar"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;table class="w-full table-fixed border-collapse"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;thead class="bg-blue-50 text-blue-900 uppercase font-black tracking-tighter border-b border-blue-100"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;tr&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;th class="px-1 py-4 text-center w-12 text-[13px]"&gt;狀態&lt;/th&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;th class="px-2 py-4 w-[25%] text-center border-r border-blue-100 text-[13px]"&gt;區域&lt;/th&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;th class="px-3 py-4 text-[13px] text-center"&gt;備註 (缺失填寫)&lt;/th&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>&lt;th class="w-8"&gt;&lt;/th&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;/tr&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/thead&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;tbody class="divide-y divide-blue-50 text-slate-800"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span></span><span class="s5">${locations.map(loc =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                        </span></span><span class="s10">const</span><span class="s1"> data = inspectionData[currentKey]?.[loc] || { checked: </span><span class="s10">false</span><span class="s1">, remark: </span><span class="s7">""</span><span class="s1"> };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                        </span></span><span class="s10">const</span><span class="s1"> area = splitArea(loc);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                        </span></span><span class="s10">return</span><span class="s1"> </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                            </span>&lt;tr class="hover:bg-blue-50/30"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;td class="py-5 text-center"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;button onclick="toggleCheck('</span><span class="s5">${loc}</span><span class="s1">')" class="</span><span class="s5">${data.checked ? </span><span class="s1">'text-green-500'</span><span class="s5"> : </span><span class="s1">'text-slate-200'</span><span class="s5">}</span><span class="s1"> transition-all active:scale-75"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                        </span></span><span class="s5">${data.checked ? </span><span class="s1">'&lt;i data-lucide="check-circle" class="w-[30px] h-[30px] mx-auto"&gt;&lt;/i&gt;'</span><span class="s5"> : </span><span class="s1">'&lt;i data-lucide="circle" class="w-[30px] h-[30px] mx-auto"&gt;&lt;/i&gt;'</span><span class="s5">}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;/td&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;td class="border-r border-blue-50 text-center px-1"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;button onclick="showGuide('</span><span class="s5">${loc}</span><span class="s1">')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[12px] leading-tight justify-center w-full"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                        </span></span><span class="s5">${area.name}</span><span class="s1"> &lt;i data-lucide="info" class="w-2.5 h-2.5 text-blue-200 shrink-0"&gt;&lt;/i&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;/td&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;td class="px-2"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;input type="text" value="</span><span class="s5">${data.remark || </span><span class="s1">""</span><span class="s5">}</span><span class="s1">" onblur="updateRemark('</span><span class="s5">${loc}</span><span class="s1">', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;/td&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;td class="text-center"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                    </span>&lt;button onclick="removeLocation('</span><span class="s5">${loc}</span><span class="s1">')" class="text-slate-100 hover:text-red-400 p-1"&gt;&lt;i data-lucide="trash-2" class="w-4 h-4 mx-auto"&gt;&lt;/i&gt;&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                                </span>&lt;/td&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                            </span>&lt;/tr&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span>`</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span>}).join(</span><span class="s7">''</span><span class="s1">)}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/tbody&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/table&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;div class="p-4 space-y-4"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span></span><span class="s5">${!showAddSelect ? </span><span class="s1">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold"&gt;+ 新增區域&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>`</span><span class="s5"> : </span><span class="s1">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;div class="flex gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 animate-in text-blue-900"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;select id="newLocSelect" class="flex-1 bg-white border border-blue-100 rounded-lg px-2 text-[12px] font-bold outline-none"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                        </span></span><span class="s5">${guideItems.map(item =&gt; </span><span class="s1">`&lt;option value="</span><span class="s5">${item}</span><span class="s1">"&gt;</span><span class="s5">${item}</span><span class="s1">&lt;/option&gt;`</span><span class="s5">).join(</span><span class="s1">''</span><span class="s5">)}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;/select&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;button onclick="addLocation()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md"&gt;加入&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                    </span>&lt;button onclick="toggleAdd(false)" class="p-2 text-slate-400"&gt;&lt;i data-lucide="x" class="w-4 h-4"&gt;&lt;/i&gt;&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>`</span><span class="s5">}</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                                </span>&lt;i data-lucide="save" class="w-5 h-5"&gt;&lt;/i&gt; 存檔</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>`</span><span class="s5">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">// --- 底部導覽列 (精簡版) ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>html += </span><span class="s7">`</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>&lt;nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all </span><span class="s5">${view === </span><span class="s1">'home'</span><span class="s5"> ? </span><span class="s1">'bg-blue-600 text-white shadow-lg'</span><span class="s5"> : </span><span class="s1">'text-slate-400'</span><span class="s5">}</span><span class="s1">"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;i data-lucide="home" class="w-4 h-4"&gt;&lt;/i&gt;&lt;span class="text-[10px] font-black"&gt;首頁&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;div class="w-px h-6 bg-slate-100 mx-1"&gt;&lt;/div&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;button onclick="setView('calendar')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all </span><span class="s5">${view === </span><span class="s1">'calendar'</span><span class="s5"> ? </span><span class="s1">'bg-blue-600 text-white shadow-lg'</span><span class="s5"> : </span><span class="s1">'text-slate-400'</span><span class="s5">}</span><span class="s1">"&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                        </span>&lt;i data-lucide="layout-grid" class="w-4 h-4"&gt;&lt;/i&gt;&lt;span class="text-[10px] font-black"&gt;日曆&lt;/span&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;/button&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/nav&gt;</span></p>
+<p class="p8"><span class="s1"><span class="Apple-converted-space">            </span>`</span><span class="s5">;</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>root.innerHTML = html;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>lucide.createIcons();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>}</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 核心邏輯：Excel 報表 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.handleExport = () =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> wb = </span><span class="s13">XLSX</span><span class="s1">.utils.book_new();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> start = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(state.exportRange.start);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> end = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(state.exportRange.end);</span></p>
+<p class="p7"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> monthsMap = {};</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">for</span><span class="s1"> (</span><span class="s10">let</span><span class="s1"> d = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(start); d &lt;= end; d.setDate(d.getDate() + </span><span class="s14">1</span><span class="s1">)) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> monthName = </span><span class="s7">`</span><span class="s1">${d.getFullYear()}</span><span class="s7">年</span><span class="s1">${d.getMonth() + </span><span class="s14">1</span><span class="s1">}</span><span class="s7">月`</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">if</span><span class="s1"> (!monthsMap[monthName]) monthsMap[monthName] = [];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>monthsMap[monthName].push(</span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">(d));</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s13">Object</span><span class="s1">.entries(monthsMap).forEach(([sheetName, days]) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> aoa = [];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> row1 = [</span><span class="s7">"斗六廠巡檢表"</span><span class="s1">, </span><span class="s7">""</span><span class="s1">];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>days.forEach(day =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> k = getDateKey(day);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>row1.push(</span><span class="s7">`</span><span class="s1">${day.getDate()}</span><span class="s7">號`</span><span class="s1">, state.inspectors[k] || </span><span class="s7">""</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>aoa.push(row1);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>aoa.push([]);</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> row3 = [</span><span class="s7">"區域編號"</span><span class="s1">, </span><span class="s7">"區域名稱"</span><span class="s1">];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>days.forEach(() =&gt; row3.push(</span><span class="s7">"狀態"</span><span class="s1">, </span><span class="s7">"備註"</span><span class="s1">));</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>aoa.push(row3);</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>state.locations.forEach(loc =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> area = splitArea(loc);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> rowData = [area.id, area.name];</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>days.forEach(day =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span></span><span class="s10">const</span><span class="s1"> k = getDateKey(day);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span></span><span class="s10">const</span><span class="s1"> record = state.inspectionData[k]?.[loc] || { checked: </span><span class="s10">false</span><span class="s1">, remark: </span><span class="s7">""</span><span class="s1"> };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>rowData.push(record.checked ? </span><span class="s7">"V"</span><span class="s1"> : </span><span class="s7">""</span><span class="s1">, record.remark || </span><span class="s7">""</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>aoa.push(rowData);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>});</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> ws = </span><span class="s13">XLSX</span><span class="s1">.utils.aoa_to_sheet(aoa);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s13">XLSX</span><span class="s1">.utils.book_append_sheet(wb, ws, sheetName);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>});</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s13">XLSX</span><span class="s1">.writeFile(wb, </span><span class="s7">`斗六廠巡檢報表_</span><span class="s1">${state.exportRange.start}</span><span class="s7">_至_</span><span class="s1">${state.exportRange.end}</span><span class="s7">.xlsx`</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>window.toggleExport(</span><span class="s10">false</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 互動功能 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.setView = (v, d) =&gt; { state.view = v; </span><span class="s10">if</span><span class="s1"> (d) { state.selectedDate = d; state.currentMonth = d.getMonth(); } render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.changeMonth = (delta) =&gt; { </span><span class="s10">let</span><span class="s1"> next = state.currentMonth + delta; </span><span class="s10">if</span><span class="s1"> (next &lt; </span><span class="s14">0</span><span class="s1">) next = </span><span class="s14">11</span><span class="s1">; </span><span class="s10">if</span><span class="s1"> (next &gt; </span><span class="s14">11</span><span class="s1">) next = </span><span class="s14">0</span><span class="s1">; state.currentMonth = next; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.toggleCheck = (loc) =&gt; { </span><span class="s10">const</span><span class="s1"> k = getDateKey(state.selectedDate); </span><span class="s10">if</span><span class="s1"> (!state.inspectionData[k]) state.inspectionData[k] = {}; </span><span class="s10">if</span><span class="s1"> (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = { checked: </span><span class="s10">false</span><span class="s1">, remark: </span><span class="s7">""</span><span class="s1"> }; state.inspectionData[k][loc].checked = !state.inspectionData[k][loc].checked; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.updateRemark = (loc, val) =&gt; { </span><span class="s10">const</span><span class="s1"> k = getDateKey(state.selectedDate); </span><span class="s10">if</span><span class="s1"> (!state.inspectionData[k]) state.inspectionData[k] = {}; </span><span class="s10">if</span><span class="s1"> (!state.inspectionData[k][loc]) state.inspectionData[k][loc] = { checked: </span><span class="s10">false</span><span class="s1">, remark: </span><span class="s7">""</span><span class="s1"> }; state.inspectionData[k][loc].remark = val; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.updateInspector = (k, name) =&gt; { state.inspectors[k] = name; };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.showGuide = (item) =&gt; { state.activeGuide = item; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.toggleAdd = (show) =&gt; { state.showAddSelect = show; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.toggleExport = (show) =&gt; { state.isExporting = show; render(); };</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.updateExportRange = (type, val) =&gt; { state.exportRange[type] = val; };</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.addLocation = () =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> select = document.getElementById(</span><span class="s7">'newLocSelect'</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> val = select.value;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">if</span><span class="s1"> (!state.locations.includes(val)) {<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>state.locations.push(val);<span class="Apple-converted-space"> </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>state.locations.sort((a, b) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> idA = parseInt(a.match(</span><span class="s4">/\d+/</span><span class="s1">) || </span><span class="s14">999</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> idB = parseInt(b.match(</span><span class="s4">/\d+/</span><span class="s1">) || </span><span class="s14">999</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">return</span><span class="s1"> idA - idB;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>state.showAddSelect = </span><span class="s10">false</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>render();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.removeLocation = (loc) =&gt; { state.locations = state.locations.filter(l =&gt; l !== loc); render(); };</span></p>
+<p class="p7"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>window.saveData = </span><span class="s10">async</span><span class="s1"> () =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>state.saveStatus = </span><span class="s10">true</span><span class="s1">; render();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> now = </span><span class="s10">new</span><span class="s1"> </span><span class="s13">Date</span><span class="s1">();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> timeStr = </span><span class="s7">`</span><span class="s1">${now.getFullYear()}</span><span class="s7">/</span><span class="s1">${now.getMonth() + </span><span class="s14">1</span><span class="s1">}</span><span class="s7">/</span><span class="s1">${now.getDate()}</span><span class="s7"> </span><span class="s1">${</span><span class="s13">String</span><span class="s1">(now.getHours()).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">:</span><span class="s1">${</span><span class="s13">String</span><span class="s1">(now.getMinutes()).padStart(</span><span class="s14">2</span><span class="s1">, </span><span class="s7">'0'</span><span class="s1">)}</span><span class="s7">`</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> key = getDateKey(state.selectedDate);</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">            </span></span><span class="s1">// --- 雲端儲存邏輯 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">if</span><span class="s1"> (state.user) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">try</span><span class="s1"> {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">const</span><span class="s1"> docRef = doc(db, </span><span class="s7">'artifacts'</span><span class="s1">, appId, </span><span class="s7">'public'</span><span class="s1">, </span><span class="s7">'data'</span><span class="s1">, </span><span class="s7">'inspections'</span><span class="s1">, key);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">await</span><span class="s1"> setDoc(docRef, {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>records: state.inspectionData[key] || {},</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>inspector: state.inspectors[key] || </span><span class="s7">""</span><span class="s1">,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>saveTime: timeStr,</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>locations: state.locations </span><span class="s11">// 同步儲存目前巡檢項目清單</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>}, { merge: </span><span class="s10">true</span><span class="s1"> });</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>} </span><span class="s10">catch</span><span class="s1"> (e) { console.error(</span><span class="s7">"雲端存檔失敗:"</span><span class="s1">, e); }</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>state.lastSaveTimes[key] = timeStr;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>setTimeout(() =&gt; { state.saveStatus = </span><span class="s10">false</span><span class="s1">; window.setView(</span><span class="s7">'home'</span><span class="s1">); }, </span><span class="s14">1000</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p6"><span class="s5"><span class="Apple-converted-space">        </span></span><span class="s1">// --- 初始化 &amp; 雲端連動 ---</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s10">const</span><span class="s1"> initApp = </span><span class="s10">async</span><span class="s1"> () =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">try</span><span class="s1"> {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">await</span><span class="s1"> signInAnonymously(auth);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>onAuthStateChanged(auth, (user) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>state.user = user;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s10">if</span><span class="s1"> (user) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span></span><span class="s10">const</span><span class="s1"> dataRef = collection(db, </span><span class="s7">'artifacts'</span><span class="s1">, appId, </span><span class="s7">'public'</span><span class="s1">, </span><span class="s7">'data'</span><span class="s1">, </span><span class="s7">'inspections'</span><span class="s1">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>onSnapshot(dataRef, (snapshot) =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                            </span>snapshot.forEach(doc =&gt; {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span></span><span class="s10">const</span><span class="s1"> d = doc.data();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span>state.inspectionData[doc.id] = d.records || {};</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span>state.inspectors[doc.id] = d.inspector || </span><span class="s7">""</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span>state.lastSaveTimes[doc.id] = d.saveTime || </span><span class="s7">""</span><span class="s1">;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span></span><span class="s11">// 如果雲端有儲存過項目清單，則以雲端為準</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span></span><span class="s10">if</span><span class="s1"> (d.locations &amp;&amp; d.locations.length &gt; </span><span class="s14">0</span><span class="s1">) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                    </span>state.locations = d.locations;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                                </span>}</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                            </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                            </span>render();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                        </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                    </span>}</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>});</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>} </span><span class="s10">catch</span><span class="s1"> (e) {</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>console.warn(</span><span class="s7">"Firebase 連線失敗，改為本地操作模式:"</span><span class="s1">, e);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">                </span>render();</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span>}</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>};</span></p>
+<p class="p7"><span class="s12"></span><br></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span>initApp(); render();</span></p>
+<p class="p3"><span class="s5"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s1">script</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s3">&lt;/</span><span class="s1">body</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s3">&lt;/</span><span class="s1">html</span><span class="s3">&gt;</span></p>
+</body>
+</html>
