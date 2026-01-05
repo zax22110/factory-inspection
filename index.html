@@ -37,8 +37,9 @@
 
     <div id="root" class="max-w-2xl mx-auto px-4 py-8">
         <!-- 內容由 JavaScript 動態渲染 -->
-        <div class="flex items-center justify-center min-h-[60vh]">
-            <div class="animate-pulse text-blue-500 font-bold">雲端系統同步中...</div>
+        <div class="flex flex-col items-center justify-center min-h-[60vh]">
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div class="animate-pulse text-blue-600 font-bold">雲端系統同步中...</div>
         </div>
     </div>
 
@@ -67,7 +68,7 @@
         // --- 全域狀態 ---
         window.state = {
             view: 'home',
-            selectedDate: new Date(), // 初始化為今天
+            selectedDate: new Date(), 
             currentMonth: new Date().getMonth(), 
             user: null,
             inspectionData: {},
@@ -94,8 +95,8 @@
             "41*女公共廁所", "42*殘障公共廁所", "43*公共置物櫃", "44*人體工房"
         ];
 
-        // 預設初始化 (僅作為備援)
-        const defaultLocations = guideItems.slice(0, 20);
+        // 預設設定：啟動時先載入前 20 項 (Firebase 載入後會視情況覆蓋)
+        state.locations = guideItems.slice(0, 20);
 
         // --- 工具函式 ---
         const getDateKey = (date) => {
@@ -129,7 +130,7 @@
             const root = document.getElementById('root');
             const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus } = state;
             const currentKey = getDateKey(selectedDate);
-            const todayKey = getDateKey(new Date()); // 動態獲取今天日期
+            const todayKey = getDateKey(new Date()); 
 
             let html = `
                 <header class="flex justify-between items-center mb-6 px-1">
@@ -223,7 +224,7 @@
                         
                         <div class="bg-blue-600 p-5 text-white">
                             <div class="flex justify-between items-center mb-5 gap-4">
-                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner">
+                                <div class="flex items-center gap-2 bg-blue-700/50 px-4 py-2 rounded-xl border border-blue-400/30 flex-1 min-w-[130px] shadow-inner text-white">
                                     <i data-lucide="calendar-check" class="w-4 h-4 text-blue-200 shrink-0"></i>
                                     <span class="text-sm font-bold truncate">${currentKey}</span>
                                 </div>
@@ -239,7 +240,7 @@
                                         <i data-lucide="save" class="w-3.5 h-3.5"></i>
                                     </button>
                                 </div>
-                                <div class="flex items-center gap-1 text-[10px] text-blue-100 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">
+                                <div class="flex items-center gap-1 text-[10px] text-blue-50 font-medium bg-blue-700/40 px-2.5 py-1.5 rounded-lg border border-blue-400/20">
                                     <i data-lucide="clock" class="w-2.5 h-2.5"></i> ${saveTime ? saveTime : '尚未存檔'}
                                 </div>
                             </div>
@@ -284,7 +285,7 @@
                             </table>
                         </div>
 
-                        <div class="p-4 space-y-4">
+                        <div class="p-4 space-y-4 text-center">
                             ${!showAddSelect ? `
                                 <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold">+ 新增巡檢區域</button>
                             ` : `
@@ -304,7 +305,7 @@
                 `;
             }
 
-            // --- 底部導覽列 (精簡化) ---
+            // 導覽列
             html += `
                 <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-auto min-w-[160px] bg-white/95 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl p-1.5 flex justify-around items-center z-50">
                     <button onclick="setView('home')" class="flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl transition-all ${view === 'home' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}">
@@ -319,7 +320,7 @@
 
             root.innerHTML = html;
             lucide.createIcons();
-        }
+        };
 
         // --- 核心邏輯：Excel 報表 ---
         window.handleExport = () => {
@@ -385,22 +386,21 @@
             const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             const key = getDateKey(state.selectedDate);
 
-            if (state.user) {
-                try {
-                    // 同時更新巡檢數據與全域配置
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
-                    await setDoc(docRef, {
-                        records: state.inspectionData[key] || {},
-                        inspector: state.inspectors[key] || "",
-                        saveTime: timeStr,
-                    }, { merge: true });
+            try {
+                // 更新當日巡檢數據
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
+                await setDoc(docRef, {
+                    records: state.inspectionData[key] || {},
+                    inspector: state.inspectors[key] || "",
+                    saveTime: timeStr,
+                }, { merge: true });
 
-                    // 全域清單永久保存 (確保 PC 手機清單一致)
-                    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
-                    await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
+                // 永久保存全域項目清單 (跨裝置同步關鍵)
+                const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
+                await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
 
-                } catch (e) { console.error("雲端存檔失敗:", e); }
-            }
+            } catch (e) { console.error("雲端存檔失敗:", e); }
+            
             state.lastSaveTimes[key] = timeStr;
             setTimeout(() => { state.saveStatus = false; window.setView('home'); }, 1000);
         };
@@ -412,14 +412,17 @@
                 onAuthStateChanged(auth, async (user) => {
                     state.user = user;
                     if (user) {
-                        // 1. 先抓全域巡檢清單 (避免資料被還原成前20項)
+                        // 1. 先從雲端載入全域項目清單
                         const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                         const configSnap = await getDoc(configRef);
                         if (configSnap.exists() && configSnap.data().activeLocations) {
                             state.locations = configSnap.data().activeLocations;
+                        } else {
+                            // 若無雲端紀錄，設為前 20 項預設值
+                            state.locations = guideItems.slice(0, 20);
                         }
 
-                        // 2. 監聽所有巡檢數據
+                        // 2. 持續監聽所有巡檢數據
                         const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');
                         onSnapshot(dataRef, (snapshot) => {
                             snapshot.forEach(doc => {
