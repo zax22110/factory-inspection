@@ -33,16 +33,18 @@
             align-items: center;
             justify-content: center;
         }
+        .zoom-in { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body class="bg-blue-50 text-slate-800 pb-28">
 
-    <div id="root" class="max-w-2xl mx-auto px-4 py-8 text-center">
+    <div id="root" class="max-w-2xl mx-auto px-4 py-8 text-center text-blue-900">
         <!-- 初始載入動畫 -->
         <div id="loading-screen" class="flex flex-col items-center justify-center min-h-[60vh]">
-            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div class="animate-pulse text-blue-600 font-bold tracking-widest">雲端權限驗證中...</div>
-            <p id="status-text" class="text-xs text-slate-400 mt-4 px-4">正在同步區域指南與數據...</p>
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4 text-blue-900"></div>
+            <div class="animate-pulse text-blue-600 font-bold tracking-widest text-blue-900">系統初始化中...</div>
+            <p id="status-text" class="text-xs text-slate-400 mt-4 px-4">正在檢查驗證狀態與下載指南...</p>
             <p id="error-message" class="text-xs text-red-500 mt-2 px-4"></p>
         </div>
     </div>
@@ -53,7 +55,7 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
         // ==========================================
-        // 1. Firebase 配置 (已導入最新金鑰)
+        // 1. Firebase 配置
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB7B55RFiPybsczcuu2NeJFtt2aNtL2O1c",
@@ -132,11 +134,12 @@
             showAddSelect: false,
             isExporting: false,
             saveStatus: false,
+            showValidateAlert: false, // 是否顯示「請填寫人員」警告
             saveMessage: "正在同步雲端...",
             isAppReady: false, 
             exportRange: { 
                 start: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`, 
-                end: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-31` 
+                end: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}` 
             }
         };
 
@@ -174,7 +177,7 @@
             if (!state.isAppReady) return;
 
             const root = document.getElementById('root');
-            const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus, saveMessage } = state;
+            const { view, selectedDate, currentMonth, inspectionData, inspectors, lastSaveTimes, locations, activeGuide, showAddSelect, isExporting, exportRange, saveStatus, saveMessage, showValidateAlert } = state;
             const currentKey = getDateKey(selectedDate);
             const todayKey = getDateKey(new Date());
 
@@ -184,7 +187,7 @@
                         <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg">
                             <i data-lucide="clipboard-check" class="w-5 h-5"></i>
                         </div>
-                        <h1 class="text-2xl font-black text-blue-900 tracking-tighter text-left">斗六廠巡檢</h1>
+                        <h1 class="text-2xl font-black text-blue-900 tracking-tighter text-left">斗六廠環境巡檢</h1>
                     </div>
                     <div class="bg-blue-500 px-3 py-1.5 rounded-xl text-[10px] font-black text-white shadow-lg uppercase tracking-wider">2026 Admin</div>
                 </header>
@@ -197,28 +200,28 @@
                         <section class="bg-white p-6 rounded-3xl shadow-lg border border-blue-50 flex justify-between items-center relative overflow-hidden text-blue-900">
                             <div class="absolute -right-2 top-0 opacity-[0.03] text-blue-900"><i data-lucide="wind" class="w-24 h-24"></i></div>
                             <div class="z-10 text-left">
-                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest text-left">Today's Goal</p>
+                                <p class="text-blue-500 font-bold text-xs uppercase tracking-widest">Today's Goal</p>
                                 <p class="text-2xl font-black text-blue-900">${todayKey}</p>
                                 <button onclick="setView('details', new Date())" class="mt-4 bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all">執行今日巡檢</button>
                             </div>
                             <div class="relative w-20 h-20 z-10 flex items-center justify-center text-center">
                                 <svg class="w-20 h-20 transform -rotate-90">
-                                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" class="text-slate-50" />
-                                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="${213.63 - (213.63 * rate) / 100}" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" />
+                                    <circle cx="40" cy="40" r="34" stroke="currentColor" stroke-width="6" fill="transparent" class="text-slate-50" />
+                                    <circle cx="40" cy="40" r="34" stroke="currentColor" stroke-width="6" fill="transparent" stroke-dasharray="213.63" stroke-dashoffset="${213.63 - (213.63 * rate) / 100}" class="transition-all duration-1000 text-blue-500" stroke-linecap="round" />
                                 </svg>
                                 <span class="absolute text-lg font-black text-blue-900">${rate}%</span>
                             </div>
                         </section>
 
                         <section class="bg-white rounded-3xl p-4 shadow-xl border border-blue-50 text-center text-blue-900">
-                            <div class="flex items-center gap-2 mb-3 px-1 text-left">
+                            <div class="flex items-center gap-2 mb-3 px-1 text-left text-blue-900 font-bold text-sm">
                                 <i data-lucide="info" class="text-blue-600 w-4 h-4"></i>
-                                <h3 class="font-black text-blue-900 text-sm">區域指南</h3>
+                                區域指南
                             </div>
                             <div class="grid grid-cols-3 gap-1.5">
                                 ${guideItems.map(item => `
                                     <button onclick="showGuide('${item}')" class="py-2 px-0.5 rounded-lg border border-blue-50 bg-blue-50/10 hover:bg-blue-50 hover:border-blue-200 transition-all text-center min-h-[44px] flex items-center justify-center active:scale-95">
-                                        <span class="text-[10.5px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">${item}</span>
+                                        <span class="text-[10px] font-bold text-blue-800 leading-tight w-full text-center px-0.5">${item}</span>
                                     </button>
                                 `).join('')}
                             </div>
@@ -229,8 +232,8 @@
                 const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
                 const calendarDays = generateCalendarDays(currentMonth);
                 html += `
-                    <div class="flex flex-col items-center animate-in text-blue-900">
-                        <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6 text-blue-900">
+                    <div class="flex flex-col items-center animate-in text-blue-900 text-center">
+                        <div class="bg-white w-full rounded-3xl p-6 shadow-xl border border-blue-100 mb-6">
                             <div class="flex justify-between items-center mb-6 px-1">
                                 <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-50 rounded-full text-blue-600 active:scale-90 transition-all"><i data-lucide="chevron-left"></i></button>
                                 <h3 class="text-xl font-black text-blue-900 tracking-tight">2026年 ${months[currentMonth]}</h3>
@@ -255,7 +258,7 @@
                                 }).join('')}
                             </div>
                         </div>
-                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 transition-all active:scale-95 uppercase tracking-wider text-center">
+                        <button onclick="toggleExport(true)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black shadow-lg flex items-center gap-1.5 active:scale-95 uppercase tracking-wider">
                             <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 匯出 Excel 報表
                         </button>
                     </div>
@@ -264,10 +267,10 @@
                 const rate = calculateRate(currentKey);
                 const saveTime = lastSaveTimes[currentKey] || "";
                 html += `
-                    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left text-blue-900">
+                    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in pb-20 relative min-h-[600px] border border-blue-100 text-left text-blue-900 text-left">
                         ${saveStatus ? `
                             <div class="absolute inset-0 z-[110] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center font-bold text-blue-600 p-8 text-center">
-                                <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4 text-blue-600"></div>
                                 <div class="leading-relaxed">${saveMessage}</div>
                             </div>
                         ` : ''}
@@ -280,7 +283,7 @@
                                 </div>
                                 <div class="flex items-center gap-1.5 bg-blue-700/50 px-2.5 py-2 rounded-xl border border-blue-400/30 w-[110px] shrink-0 shadow-inner text-white">
                                     <i data-lucide="user" class="w-4 h-4 text-blue-200 shrink-0"></i>
-                                    <input type="text" placeholder="人員" value="${inspectors[currentKey] || ""}" onchange="updateInspector('${currentKey}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">
+                                    <input type="text" placeholder="人員(必填)" value="${inspectors[currentKey] || ""}" onchange="updateInspector('${currentKey}', this.value)" class="bg-transparent text-[12px] font-bold focus:outline-none w-full placeholder:text-blue-300">
                                 </div>
                             </div>
                             <div class="flex justify-between items-end">
@@ -303,7 +306,7 @@
                                         <th class="px-1 py-4 text-center w-12 text-[13px]">狀態</th>
                                         <th class="px-2 py-4 w-[25%] text-center border-r border-blue-100 text-[13px]">區域</th>
                                         <th class="px-3 py-4 text-[13px] text-center">備註 (缺失填寫)</th>
-                                        <th class="w-8"></th>
+                                        <th class="w-14"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-blue-50 text-slate-800">
@@ -312,21 +315,24 @@
                                         const area = splitArea(loc);
                                         return `
                                             <tr class="hover:bg-blue-50/30 transition-colors">
-                                                <td class="py-5 text-center">
+                                                <td class="py-5 text-center text-center">
                                                     <button onclick="toggleCheck('${loc}')" class="${data.checked ? 'text-green-500' : 'text-slate-200'} active:scale-75">
                                                         ${data.checked ? '<i data-lucide="check-circle" class="w-[30px] h-[30px] mx-auto"></i>' : '<i data-lucide="circle" class="w-[30px] h-[30px] mx-auto"></i>'}
                                                     </button>
                                                 </td>
                                                 <td class="border-r border-blue-50 text-center px-1">
-                                                    <button onclick="showGuide('${loc}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[11.5px] leading-tight justify-center w-full text-center">
+                                                    <button onclick="showGuide('${loc}')" class="inline-flex items-center gap-0.5 font-black text-slate-800 text-[11px] leading-tight justify-center w-full text-center">
                                                         ${area.name} <i data-lucide="info" class="w-2.5 h-2.5 text-blue-200"></i>
                                                     </button>
                                                 </td>
-                                                <td class="px-2 text-center">
-                                                    <input type="text" value="${data.remark || ""}" onblur="updateRemark('${loc}', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]">
+                                                <td class="px-2 text-center text-center">
+                                                    <input type="text" id="remark-${loc}" value="${data.remark || ""}" onblur="updateRemark('${loc}', this.value)" class="remark-input w-full bg-transparent border-b border-blue-100 focus:border-blue-400 focus:outline-none py-1 text-[13px]">
                                                 </td>
-                                                <td class="text-center">
-                                                    <button onclick="removeLocation('${loc}')" class="text-slate-100 hover:text-red-400 p-1 text-center"><i data-lucide="trash-2" class="w-4 h-4 mx-auto text-center"></i></button>
+                                                <td class="text-center px-1">
+                                                    <div class="flex items-center gap-1 justify-center">
+                                                        <button onclick="clearRemark('${loc}')" title="清除文字" class="text-slate-200 hover:text-blue-400 active:scale-90 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                                        <button onclick="removeLocation('${loc}')" title="移除此列" class="text-slate-100 hover:text-red-400 active:scale-90 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         `;
@@ -337,18 +343,18 @@
 
                         <div class="p-4 space-y-4 text-center">
                             ${!showAddSelect ? `
-                                <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold tracking-widest transition-all hover:bg-blue-50 active:scale-95 uppercase">+ 新增巡檢區域</button>
+                                <button onclick="toggleAdd(true)" class="w-full py-2 border-2 border-dashed border-blue-200 text-blue-300 rounded-xl text-[11px] font-bold tracking-widest active:scale-95 uppercase">+ 新增巡檢區域</button>
                             ` : `
                                 <div class="flex gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 animate-in text-blue-900">
                                     <select id="newLocSelect" class="flex-1 bg-white border border-blue-100 rounded-lg px-2 text-[12px] font-bold outline-none">
                                         ${guideItems.map(item => `<option value="${item}">${item}</option>`).join('')}
                                     </select>
-                                    <button onclick="addLocation()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">加入</button>
-                                    <button onclick="toggleAdd(false)" class="p-2 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                    <button onclick="addLocation()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md active:scale-95">加入</button>
+                                    <button onclick="toggleAdd(false)" class="p-2 text-slate-400 active:scale-90"><i data-lucide="x" class="w-4 h-4 text-slate-400"></i></button>
                                 </div>
                             `}
                             <button onclick="saveData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-widest text-center">
-                                <i data-lucide="save" class="w-5 h-5"></i> 存檔巡檢表
+                                <i data-lucide="save" class="w-5 h-5"></i> 存檔
                             </button>
                         </div>
                     </div>
@@ -373,9 +379,9 @@
                 const guide = areaGuidelines[activeGuide] || { req: "請參照標準清潔程序進行環境維護。", sug: "觀察地板、設備及異味狀態。" };
                 html += `
                     <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm animate-in text-left text-blue-900">
-                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-blue-100">
+                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-blue-100 zoom-in">
                             <div class="bg-blue-600 p-6 text-white relative text-center">
-                                <button onclick="showGuide(null)" class="absolute top-4 right-4 p-1 hover:bg-white/20 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                                <button onclick="showGuide(null)" class="absolute top-4 right-4 p-1 hover:bg-white/20 rounded-full text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
                                 <h3 class="text-xl font-black">${activeGuide}</h3>
                             </div>
                             <div class="p-6 space-y-6 text-sm text-left">
@@ -388,12 +394,65 @@
                 `;
             }
 
+            // --- Excel 匯出日期選擇彈窗 ---
+            if (isExporting) {
+                html += `
+                    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm animate-in text-left text-blue-900">
+                        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 border border-blue-100 zoom-in">
+                            <div class="flex justify-between items-center mb-6 text-blue-900">
+                                <h3 class="font-black text-xl">匯出報表日期自選</h3>
+                                <button onclick="toggleExport(false)" class="p-2 active:scale-90 text-blue-900"><i data-lucide="x" class="w-6 h-6"></i></button>
+                            </div>
+                            <div class="space-y-6 text-left">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-400 block mb-2 uppercase tracking-widest">開始日期</label>
+                                    <input type="date" value="${exportRange.start}" onchange="updateExportRange('start', this.value)" class="w-full border-2 border-blue-50 rounded-xl p-4 outline-none focus:border-blue-400 transition-colors text-blue-900 font-bold">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-400 block mb-2 uppercase tracking-widest">結束日期</label>
+                                    <input type="date" value="${exportRange.end}" onchange="updateExportRange('end', this.value)" class="w-full border-2 border-blue-50 rounded-xl p-4 outline-none focus:border-blue-400 transition-colors text-blue-900 font-bold">
+                                </div>
+                                <button onclick="handleExport()" class="w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-2xl font-black shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="file-down" class="w-6 h-6"></i> 生成 Excel 報表
+                                </button>
+                                <p class="text-[10px] text-center text-slate-400 font-medium">系統會自動依月份分組生成不同分頁</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- 強制填寫人員警告彈窗 ---
+            if (showValidateAlert) {
+                html += `
+                    <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-red-900/40 backdrop-blur-sm animate-in text-center">
+                        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-8 border-2 border-red-100 zoom-in">
+                            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="user-plus" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-slate-800 mb-2">未填寫人員</h3>
+                            <p class="text-slate-500 text-sm mb-6 leading-relaxed">請在巡檢表上方填寫<br><span class="font-bold text-red-500">「人員姓名」</span>後才能存檔。</p>
+                            <button onclick="toggleValidateAlert(false)" class="w-full bg-red-500 text-white py-4 rounded-2xl font-bold shadow-lg active:bg-red-600 transition-all uppercase tracking-widest">我知道了</button>
+                        </div>
+                    </div>
+                `;
+            }
+
             root.innerHTML = html;
             lucide.createIcons();
         }
 
-        // --- 功能控制 ---
+        // --- 核心邏輯：存檔 (含人員驗證) ---
         window.saveData = async () => {
+            const currentKey = getDateKey(state.selectedDate);
+            const inspectorName = state.inspectors[currentKey] || "";
+
+            // 驗證人員姓名是否為空
+            if (!inspectorName.trim()) {
+                window.toggleValidateAlert(true);
+                return;
+            }
+
             if (!state.user) return;
             state.saveStatus = true; 
             state.saveMessage = "正在同步雲端...";
@@ -401,14 +460,13 @@
             
             const now = new Date();
             const timeStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            const key = getDateKey(state.selectedDate);
 
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', key);
-                await setDoc(docRef, { records: state.inspectionData[key] || {}, inspector: state.inspectors[key] || "", saveTime: timeStr }, { merge: true });
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inspections', currentKey);
+                await setDoc(docRef, { records: state.inspectionData[currentKey] || {}, inspector: inspectorName, saveTime: timeStr }, { merge: true });
                 const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                 await setDoc(configRef, { activeLocations: state.locations }, { merge: true });
-                state.lastSaveTimes[key] = timeStr;
+                state.lastSaveTimes[currentKey] = timeStr;
                 state.saveMessage = "存檔成功！";
                 render();
                 await new Promise(r => setTimeout(r, 600));
@@ -423,37 +481,57 @@
             }
         };
 
-        window.handleExport = () => {
-            const wb = XLSX.utils.book_new();
-            const start = new Date(state.exportRange.start);
-            const end = new Date(state.exportRange.end);
-            const monthsMap = {};
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const monthName = `${d.getFullYear()}年${d.getMonth() + 1}月`;
-                if (!monthsMap[monthName]) monthsMap[monthName] = [];
-                monthsMap[monthName].push(new Date(d));
+        // --- 其他互動邏輯 ---
+        window.clearRemark = (loc) => {
+            const k = getDateKey(state.selectedDate);
+            if (state.inspectionData[k] && state.inspectionData[k][loc]) {
+                state.inspectionData[k][loc].remark = "";
+                render();
             }
-            Object.entries(monthsMap).forEach(([sheetName, days]) => {
-                const aoa = [["斗六廠巡檢表", ""]];
-                days.forEach(day => aoa[0].push(`${day.getDate()}號`, state.inspectors[getDateKey(day)] || ""));
-                aoa.push([]);
-                const row3 = ["區域編號", "區域名稱"];
-                days.forEach(() => row3.push("狀態", "備註"));
-                aoa.push(row3);
-                state.locations.forEach(loc => {
-                    const area = splitArea(loc);
-                    const rowData = [area.id, area.name];
+        };
+
+        window.toggleValidateAlert = (show) => { state.showValidateAlert = show; render(); };
+
+        window.handleExport = () => {
+            const { exportRange, inspectionData, inspectors, locations } = state;
+            try {
+                const wb = XLSX.utils.book_new();
+                const start = new Date(exportRange.start);
+                const end = new Date(exportRange.end);
+                const monthsMap = {};
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const monthKey = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+                    if (!monthsMap[monthKey]) monthsMap[monthKey] = [];
+                    monthsMap[monthKey].push(new Date(d));
+                }
+                if (Object.keys(monthsMap).length === 0) { alert("選擇的日期範圍內沒有數據。"); return; }
+                Object.entries(monthsMap).forEach(([sheetName, days]) => {
+                    const aoa = [];
+                    const row1 = ["斗六廠巡檢表", ""];
                     days.forEach(day => {
                         const k = getDateKey(day);
-                        const rec = state.inspectionData[k]?.[loc] || { checked: false, remark: "" };
-                        rowData.push(rec.checked ? "V" : "", rec.remark || "");
+                        row1.push(`${day.getDate()}號`, inspectors[k] || "");
                     });
-                    aoa.push(rowData);
+                    aoa.push(row1);
+                    aoa.push([]);
+                    const row3 = ["區域編號", "區域名稱"];
+                    days.forEach(() => row3.push("狀態", "備註"));
+                    aoa.push(row3);
+                    locations.forEach(loc => {
+                        const area = splitArea(loc);
+                        const rowData = [area.id, area.name];
+                        days.forEach(day => {
+                            const k = getDateKey(day);
+                            const rec = inspectionData[k]?.[loc] || { checked: false, remark: "" };
+                            rowData.push(rec.checked ? "V" : "", rec.remark || "");
+                        });
+                        aoa.push(rowData);
+                    });
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
                 });
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetName);
-            });
-            XLSX.writeFile(wb, `斗六廠巡檢報表.xlsx`);
-            window.toggleExport(false);
+                XLSX.writeFile(wb, `斗六廠環境巡檢報表.xlsx`);
+                window.toggleExport(false);
+            } catch (err) { alert("Excel 生成失敗"); }
         };
 
         window.setView = (v, d) => { state.view = v; if (d) { state.selectedDate = d; state.currentMonth = d.getMonth(); } render(); };
@@ -464,7 +542,7 @@
         window.showGuide = (item) => { state.activeGuide = item; render(); };
         window.toggleAdd = (show) => { state.showAddSelect = show; render(); };
         window.toggleExport = (show) => { state.isExporting = show; render(); };
-        window.updateExportRange = (type, val) => { state.exportRange[type] = val; };
+        window.updateExportRange = (type, val) => { state.exportRange[type] = val; render(); };
         window.removeLocation = (loc) => { state.locations = state.locations.filter(l => l !== loc); render(); };
         window.addLocation = () => {
             const select = document.getElementById('newLocSelect');
@@ -477,27 +555,24 @@
             render();
         };
 
-        // --- 初始化核心邏輯 (修正權限問題點) ---
+        // --- 初始化核心邏輯 ---
         const initApp = async () => {
             const errDiv = document.getElementById('error-message');
             const statusText = document.getElementById('status-text');
-            
             try {
-                statusText.innerText = "正在啟動安全驗證...";
+                statusText.innerText = "正在連線伺服器...";
                 await signInAnonymously(auth);
-                
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         state.user = user;
-                        statusText.innerText = "驗證成功，正在下載全域指南與配置...";
-
+                        statusText.innerText = "連線成功，同步數據中...";
                         try {
                             const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'global');
                             const configSnap = await getDoc(configRef);
                             if (configSnap.exists() && configSnap.data().activeLocations) {
                                 state.locations = configSnap.data().activeLocations;
                             }
-                        } catch (e) { console.warn("清單配置讀取失敗，使用預設值。"); }
+                        } catch (e) { console.warn("清單讀取跳過"); }
 
                         const dataRef = collection(db, 'artifacts', appId, 'public', 'data', 'inspections');
                         onSnapshot(dataRef, (snapshot) => {
@@ -510,15 +585,12 @@
                             state.isAppReady = true;
                             render();
                         }, (err) => {
-                            console.error("監聽失敗:", err.message);
-                            errDiv.innerHTML = "雲端數據讀取受限。<br>請確認 Firebase Firestore 安全性規則已發佈。";
-                            state.isAppReady = true;
-                            render();
+                            errDiv.innerHTML = "雲端同步異常，請確認 Firebase Rules 規則。";
+                            state.isAppReady = true; render();
                         });
                     }
                 });
             } catch (e) {
-                console.error("Auth 失敗:", e.message);
                 errDiv.innerHTML = "系統啟動失敗: " + e.message;
                 setTimeout(() => { state.isAppReady = true; render(); }, 3000);
             }
